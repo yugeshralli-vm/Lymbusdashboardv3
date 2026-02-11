@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { 
   Star, 
   Activity, 
@@ -33,7 +33,12 @@ import {
   Link as LinkIcon,
   QrCode,
   Mail,
-  Globe
+  Globe,
+  Search,
+  Filter,
+  Database,
+  FileText,
+  FilterX
 } from 'lucide-react';
 import { useDrag, useDrop, DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -58,6 +63,7 @@ interface CanvasElement extends FormElement {
   properties?: {
     range?: number;
     placeholder?: string;
+    weightage?: number;
     [key: string]: any;
   };
 }
@@ -75,32 +81,20 @@ const DraggableSidebarItem = ({ type, label, icon: Icon, category }: FormElement
     }),
   }));
 
-  const isHoverDemo = label === 'Yes/No';
-
   return (
     <div
       ref={drag as any}
       className={cn(
         "flex items-center gap-2 px-3 py-2.5 rounded-xl border border-brand-border bg-white cursor-grab active:cursor-grabbing transition-all hover:border-brand-blue hover:shadow-sm group",
-        isDragging && "opacity-40 grayscale",
-        isHoverDemo && "border-brand-blue bg-brand-blue/5 shadow-sm"
+        isDragging && "opacity-40 grayscale"
       )}
     >
-      <div className={cn(
-        "w-8 h-8 rounded-lg bg-brand-bg flex items-center justify-center text-brand-gray group-hover:text-brand-blue transition-colors",
-        isHoverDemo && "bg-brand-blue text-white"
-      )}>
+      <div className="w-8 h-8 rounded-lg bg-brand-bg flex items-center justify-center text-brand-gray group-hover:text-brand-blue transition-colors shrink-0">
         <Icon size={16} />
       </div>
-      <span className={cn(
-        "text-[10px] font-bold uppercase tracking-widest text-brand-gray group-hover:text-brand-dark",
-        isHoverDemo && "text-brand-blue"
-      )}>
+      <span className="text-[10px] font-bold uppercase tracking-widest text-brand-gray group-hover:text-brand-dark leading-none">
         {label}
       </span>
-      {isHoverDemo && (
-        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-blue animate-pulse" />
-      )}
     </div>
   );
 };
@@ -148,9 +142,18 @@ const CanvasItem = ({
                 "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
                 isSelected ? "bg-brand-blue text-white" : "bg-brand-bg text-brand-blue"
               )}>
-                <element.icon size={16} />
+                {element.icon && typeof element.icon !== 'string' ? (
+                  <element.icon size={16} />
+                ) : (
+                  <Sparkles size={16} />
+                )}
               </div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-brand-gray/60">{element.label}</span>
+              {element.properties?.weightage !== undefined && (
+                <span className="px-2 py-0.5 rounded-full bg-brand-blue/10 text-brand-blue text-[8px] font-bold uppercase tracking-widest border border-brand-blue/10">
+                  W: {element.properties.weightage}
+                </span>
+              )}
               {element.required && (
                 <span className="text-red-500 text-xs font-bold">*</span>
               )}
@@ -220,15 +223,118 @@ const CanvasItem = ({
 };
 
 const FormBuilderInteractiveContent = () => {
-  const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([]);
+  const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([
+    {
+      id: 'default-text',
+      type: 'text',
+      label: 'Short Text',
+      icon: Type,
+      category: 'TEXT ELEMENTS',
+      order: 0,
+      questionText: 'How would you describe your overall experience?',
+      required: true,
+      properties: { placeholder: 'Type your answer here...', weightage: 1 }
+    },
+    {
+      id: 'default-rating',
+      type: 'rating',
+      label: 'Rating',
+      icon: Star,
+      category: 'FEEDBACK ELEMENTS',
+      order: 1,
+      questionText: 'Please rate our facility cleanliness',
+      required: true,
+      properties: { range: 5, weightage: 1 }
+    },
+    {
+      id: 'default-nps',
+      type: 'nps',
+      label: 'NPS',
+      icon: Activity,
+      category: 'FEEDBACK ELEMENTS',
+      order: 2,
+      questionText: 'How likely are you to recommend us to a friend or colleague?',
+      required: true,
+      properties: { weightage: 1 }
+    }
+  ]);
   const [activeTab, setActiveTab] = useState<'details' | 'configure' | 'preview'>('details');
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [draftElement, setDraftElement] = useState<CanvasElement | null>(null);
   const [previewDevice, setPreviewDevice] = useState<'mobile' | 'tablet' | 'desktop'>('mobile');
   const [formName, setFormName] = useState('Untitled form');
+  const [libraryTab, setLibraryTab] = useState<'files' | 'questions'>('questions');
+  const [librarySearch, setLibrarySearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [categories, setCategories] = useState(['Clinical', 'Lifestyle', 'Operational', 'Data']);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [showCategoryInput, setShowCategoryInput] = useState(false);
+
+  const handleAddCategory = () => {
+    if (newCategoryName.trim() && !categories.includes(newCategoryName.trim())) {
+      setCategories([...categories, newCategoryName.trim()]);
+      if (draftElement) {
+        setDraftElement({ ...draftElement, category: newCategoryName.trim().toUpperCase() });
+      }
+      setNewCategoryName('');
+      setShowCategoryInput(false);
+      toast.success('Category added');
+    }
+  };
+
+  const mockFiles = [
+    { name: 'Patient_Consent_v2.pdf', type: 'PDF', size: '1.2 MB', date: 'Feb 10, 2026' },
+    { name: 'X-Ray_Reference_Guide.png', type: 'IMAGE', size: '4.5 MB', date: 'Jan 15, 2026' },
+    { name: 'Privacy_Policy_2025.docx', type: 'DOC', size: '850 KB', date: 'Dec 20, 2025' },
+    { name: 'Medical_History_Template.pdf', type: 'PDF', size: '2.1 MB', date: 'Feb 05, 2026' },
+    { name: 'Logo_HighRes.png', type: 'IMAGE', size: '2.2 MB', date: 'Feb 11, 2026' },
+  ];
+
+  const mockQuestions = [
+    { text: 'Have you experienced any chest pain in the last 24 hours?', type: 'Yes/No', category: 'Clinical' },
+    { text: 'How many hours of sleep do you get on average?', type: 'Number', category: 'Lifestyle' },
+    { text: 'Please upload your latest blood work results.', type: 'File Upload', category: 'Data' },
+    { text: 'Are you currently taking any prescription medications?', type: 'Yes/No', category: 'Clinical' },
+    { text: 'Rate your satisfaction with the check-in process.', type: 'Rating', category: 'Operational' },
+  ];
+
+  const filteredFiles = useMemo(() => 
+    mockFiles.filter(f => 
+      f.name.toLowerCase().includes(librarySearch.toLowerCase()) && 
+      (!activeFilter || f.type === activeFilter)
+    ),
+  [librarySearch, activeFilter]);
+
+  const filteredQuestions = useMemo(() => 
+    mockQuestions.filter(q => 
+      q.text.toLowerCase().includes(librarySearch.toLowerCase()) && 
+      (!activeFilter || q.category === activeFilter)
+    ),
+  [librarySearch, activeFilter]);
 
   const selectedElement = useMemo(() => 
     canvasElements.find(el => el.id === selectedElementId),
   [canvasElements, selectedElementId]);
+
+  useEffect(() => {
+    if (selectedElement) {
+      // Deep clone properties but preserve the icon component reference
+      setDraftElement({
+        ...selectedElement,
+        properties: selectedElement.properties ? JSON.parse(JSON.stringify(selectedElement.properties)) : {}
+      });
+    } else {
+      setDraftElement(null);
+    }
+  }, [selectedElementId, selectedElement]);
+
+  const handleSaveProperties = () => {
+    if (draftElement) {
+      updateElement(draftElement.id, { ...draftElement });
+      setSelectedElementId(null);
+      toast.success('Properties updated');
+    }
+  };
 
   const [{ isOver }, drop] = useDrop(() => ({
     accept: ELEMENT_TYPE,
@@ -461,18 +567,19 @@ const FormBuilderInteractiveContent = () => {
 
   const addElement = useCallback((item: FormElement) => {
     const getInitialProperties = (type: string) => {
+      const baseProperties = { weightage: 1 };
       switch (type) {
-        case 'rating': return { range: 5 };
+        case 'rating': return { ...baseProperties, range: 5 };
         case 'radio':
         case 'checkbox':
         case 'dropdown':
-          return { options: ['Option 1', 'Option 2', 'Option 3'] };
+          return { ...baseProperties, options: ['Option 1', 'Option 2', 'Option 3'] };
         case 'text':
         case 'paragraph':
         case 'email':
         case 'number':
-          return { placeholder: 'Type your answer here...' };
-        default: return {};
+          return { ...baseProperties, placeholder: 'Type your answer here...' };
+        default: return baseProperties;
       }
     };
 
@@ -521,15 +628,15 @@ const FormBuilderInteractiveContent = () => {
     ]},
     { category: 'MULTI ELEMENTS', items: [
       { type: 'dropdown', label: 'Dropdown', icon: ChevronDown },
-      { type: 'yesno', label: 'Yes/No', icon: CheckCircle2 },
       { type: 'checkbox', label: 'Checkbox', icon: CheckSquare },
+      { type: 'yesno', label: 'Yes/No', icon: CheckCircle2 },
       { type: 'radio', label: 'Radio', icon: CircleDot },
     ]},
-    { category: 'MEDIA ELEMENTS', items: [
-      { type: 'attachment', label: 'Attachment', icon: Paperclip },
-      { type: 'image', label: 'Image', icon: ImageIcon },
-      { type: 'upload', label: 'File Upload', icon: Upload },
-    ]},
+      { category: 'MEDIA ELEMENTS', items: [
+        { type: 'attachment', label: 'Attachment', icon: Paperclip },
+        { type: 'image', label: 'Image', icon: ImageIcon },
+        { type: 'upload', label: 'Upload', icon: Upload },
+      ]},
     { category: 'DATE ELEMENTS', items: [
       { type: 'date', label: 'Date', icon: Calendar },
       { type: 'time', label: 'Time', icon: Clock },
@@ -547,19 +654,26 @@ const FormBuilderInteractiveContent = () => {
           </h2>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-6 pb-40 space-y-8">
+        <div className="flex-1 overflow-y-auto p-4 pb-40 space-y-8">
           {elements.map((group) => (
             <div key={group.category} className="space-y-3">
               <h3 className="text-[9px] font-bold text-brand-gray/60 uppercase tracking-[0.2em]">{group.category}</h3>
               <div className="grid grid-cols-2 gap-2">
                 {group.items.map((item) => (
-                  <DraggableSidebarItem 
+                  <div 
                     key={item.label} 
-                    type={item.type} 
-                    label={item.label} 
-                    icon={item.icon} 
-                    category={group.category} 
-                  />
+                    className={cn(
+                      "w-full",
+                      item.label.length > 6 ? "col-span-2" : "col-span-1"
+                    )}
+                  >
+                    <DraggableSidebarItem 
+                      type={item.type} 
+                      label={item.label} 
+                      icon={item.icon} 
+                      category={group.category} 
+                    />
+                  </div>
                 ))}
               </div>
             </div>
@@ -577,7 +691,6 @@ const FormBuilderInteractiveContent = () => {
           <div className="bg-white p-1 rounded-[20px] border border-brand-border flex gap-1 mb-10 shadow-sm shrink-0" onClick={e => e.stopPropagation()}>
             {[
               { id: 'details', label: 'Details', icon: Layout },
-              { id: 'configure', label: 'Configure', icon: Settings },
               { id: 'preview', label: 'Preview & Share', icon: Eye },
             ].map((tab) => (
               <button
@@ -654,252 +767,527 @@ const FormBuilderInteractiveContent = () => {
         </div>
       </main>
 
-      {/* Right Sidebar - Properties or Share */}
-      <aside className="w-80 bg-white border-l border-brand-border flex flex-col shrink-0 hidden xl:flex overflow-hidden">
-        {activeTab === 'preview' && !selectedElementId ? (
-          /* Share Panel */
-          <>
-            <div className="p-6 border-b border-brand-border shrink-0 bg-white/50">
-              <h2 className="text-sm font-bold text-brand-dark uppercase tracking-widest flex items-center gap-2">
-                <Share2 size={16} className="text-brand-blue" />
-                Share Form
-              </h2>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
-              <div className="space-y-4">
-                <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Public Link</label>
-                <div className="flex items-center gap-2 bg-brand-bg/50 border border-brand-border rounded-xl p-2 pl-4">
-                  <span className="text-xs font-bold text-brand-gray truncate flex-1">lymbus.ai/f/e7r9...</span>
-                  <button className="p-2 text-brand-blue hover:bg-white rounded-lg transition-all shadow-sm">
-                    <Copy size={14} />
-                  </button>
-                </div>
+      {/* Right Sidebar - Properties, Share or Library */}
+      <AnimatePresence mode="wait">
+        <Motion.aside 
+          key={selectedElementId ? 'properties' : activeTab === 'preview' ? 'share' : 'library'}
+          initial={{ width: 0, opacity: 0 }}
+          animate={{ width: 320, opacity: 1 }}
+          exit={{ width: 0, opacity: 0 }}
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          className="bg-white border-l border-brand-border flex flex-col shrink-0 hidden xl:flex overflow-hidden h-full"
+        >
+          {selectedElementId ? (
+            /* Properties Panel */
+            <>
+              <div className="p-6 border-b border-brand-border shrink-0 bg-white/50">
+                <h2 className="text-sm font-bold text-brand-dark uppercase tracking-widest flex items-center gap-2">
+                  <Sparkles size={16} className="text-brand-blue" />
+                  Properties
+                </h2>
               </div>
+              
+              <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
+                <AnimatePresence mode="wait">
+                  {draftElement ? (
+                    <Motion.div
+                      key={draftElement.id}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      className="space-y-8 pb-10"
+                    >
+                      {/* Basic Info */}
+                      <div className="space-y-6">
+                        <div className="space-y-3">
+                          <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Question Label</label>
+                          <textarea 
+                            value={draftElement.questionText}
+                            onChange={(e) => setDraftElement(prev => prev ? ({ ...prev, questionText: e.target.value }) : null)}
+                            placeholder={`Enter ${draftElement.label.toLowerCase()}...`}
+                            className="w-full bg-brand-bg/50 border border-brand-border rounded-xl px-4 py-3 text-sm font-bold text-brand-dark focus:bg-white focus:ring-1 focus:ring-brand-blue/20 transition-all outline-none resize-none h-24"
+                          />
+                        </div>
 
-              <div className="space-y-4">
-                 <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Distribute Via</label>
-                 <div className="grid grid-cols-2 gap-3">
-                   <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-brand-border hover:border-brand-blue/30 hover:bg-brand-blue/5 transition-all group">
-                     <div className="w-10 h-10 rounded-full bg-brand-bg group-hover:bg-brand-blue group-hover:text-white flex items-center justify-center text-brand-gray transition-colors">
-                       <Mail size={18} />
-                     </div>
-                     <span className="text-[10px] font-bold uppercase tracking-widest text-brand-dark">Email</span>
-                   </button>
-                   <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-brand-border hover:border-brand-blue/30 hover:bg-brand-blue/5 transition-all group">
-                     <div className="w-10 h-10 rounded-full bg-brand-bg group-hover:bg-brand-blue group-hover:text-white flex items-center justify-center text-brand-gray transition-colors">
-                       <QrCode size={18} />
-                     </div>
-                     <span className="text-[10px] font-bold uppercase tracking-widest text-brand-dark">QR Code</span>
-                   </button>
-                   <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-brand-border hover:border-brand-blue/30 hover:bg-brand-blue/5 transition-all group">
-                     <div className="w-10 h-10 rounded-full bg-brand-bg group-hover:bg-brand-blue group-hover:text-white flex items-center justify-center text-brand-gray transition-colors">
-                       <LinkIcon size={18} />
-                     </div>
-                     <span className="text-[10px] font-bold uppercase tracking-widest text-brand-dark">Embed</span>
-                   </button>
-                   <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-brand-border hover:border-brand-blue/30 hover:bg-brand-blue/5 transition-all group">
-                     <div className="w-10 h-10 rounded-full bg-brand-bg group-hover:bg-brand-blue group-hover:text-white flex items-center justify-center text-brand-gray transition-colors">
-                       <Globe size={18} />
-                     </div>
-                     <span className="text-[10px] font-bold uppercase tracking-widest text-brand-dark">Social</span>
-                   </button>
-                 </div>
-              </div>
-
-              <div className="p-4 bg-brand-blue/5 rounded-2xl border border-brand-blue/10">
-                <div className="flex items-start gap-3">
-                  <Info size={16} className="text-brand-blue mt-0.5 shrink-0" />
-                  <div>
-                    <h4 className="text-xs font-bold text-brand-blue mb-1">Status: Draft</h4>
-                    <p className="text-[10px] leading-relaxed text-brand-blue/80 font-medium">
-                      Publish your form to start collecting responses.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-brand-border bg-white shrink-0">
-               <button 
-                className="w-full py-3 bg-brand-blue text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-brand-blue/20 hover:bg-brand-blue/90 transition-all flex items-center justify-center gap-2"
-                onClick={() => toast.success('Form published successfully')}
-              >
-                <Globe size={14} />
-                Publish Form
-              </button>
-            </div>
-          </>
-        ) : (
-          /* Properties Panel */
-          <>
-            <div className="p-6 border-b border-brand-border shrink-0 bg-white/50">
-              <h2 className="text-sm font-bold text-brand-dark uppercase tracking-widest flex items-center gap-2">
-                <Sparkles size={16} className="text-brand-blue" />
-                Properties
-              </h2>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
-              <AnimatePresence mode="wait">
-                {selectedElement ? (
-                  <Motion.div
-                    key={selectedElement.id}
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    className="space-y-8"
-                  >
-                    {/* Basic Info */}
-                    <div className="space-y-4">
-                      <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Question Label</label>
-                      <textarea 
-                        value={selectedElement.questionText}
-                        onChange={(e) => updateElement(selectedElement.id, { questionText: e.target.value })}
-                        placeholder={`Enter ${selectedElement.label.toLowerCase()}...`}
-                        className="w-full bg-brand-bg/50 border border-brand-border rounded-xl px-4 py-3 text-sm font-bold text-brand-dark focus:bg-white focus:ring-1 focus:ring-brand-blue/20 transition-all outline-none resize-none h-24"
-                      />
-                    </div>
-
-                    {/* Validation */}
-                    <div className="space-y-4">
-                      <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Validation</label>
-                      <div className="flex items-center justify-between p-4 bg-brand-bg/50 rounded-xl border border-brand-border">
-                        <span className="text-xs font-bold text-brand-dark">Mark as Required</span>
-                        <button 
-                          onClick={() => updateElement(selectedElement.id, { required: !selectedElement.required })}
-                          className={cn(
-                            "w-9 h-5 rounded-full relative transition-all duration-300",
-                            selectedElement.required ? "bg-brand-blue shadow-sm shadow-brand-blue/30" : "bg-brand-border border border-brand-border"
-                          )}
-                        >
-                          <div className={cn(
-                            "absolute top-1 w-3 h-3 bg-white rounded-full transition-all duration-300 shadow-sm",
-                            selectedElement.required ? "right-1" : "left-1"
-                          )} />
-                        </button>
+                        {['text', 'paragraph', 'email', 'number'].includes(draftElement.type) && (
+                          <div className="space-y-3">
+                            <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Placeholder Text</label>
+                            <input 
+                              type="text"
+                              value={draftElement.properties?.placeholder || ''}
+                              onChange={(e) => setDraftElement(prev => prev ? ({ 
+                                ...prev, 
+                                properties: { ...prev.properties, placeholder: e.target.value } 
+                              }) : null)}
+                              placeholder="e.g. Type your response..."
+                              className="w-full bg-brand-bg/50 border border-brand-border rounded-xl px-4 py-3 text-sm font-bold text-brand-dark focus:bg-white focus:ring-1 focus:ring-brand-blue/20 transition-all outline-none"
+                            />
+                          </div>
+                        )}
                       </div>
-                    </div>
 
-                    {/* Specific Configs */}
-                    {selectedElement.type === 'rating' && (
+                      {/* Validation & Weightage */}
                       <div className="space-y-4">
-                        <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Rating Range</label>
-                        <div className="grid grid-cols-5 gap-2">
-                          {[3, 4, 5, 7, 10].map(n => (
+                        <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Scoring & Validation</label>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between p-4 bg-brand-bg/50 rounded-xl border border-brand-border">
+                            <span className="text-xs font-bold text-brand-dark">Mark as Required</span>
                             <button 
-                              key={n}
-                              onClick={() => updateElement(selectedElement.id, { properties: { ...selectedElement.properties, range: n } })}
+                              onClick={() => setDraftElement(prev => prev ? ({ ...prev, required: !prev.required }) : null)}
                               className={cn(
-                                "h-10 rounded-lg border text-[10px] font-bold transition-all",
-                                selectedElement.properties?.range === n 
-                                  ? "bg-brand-blue text-white border-brand-blue" 
-                                  : "bg-white text-brand-gray border-brand-border hover:border-brand-blue/30"
+                                "w-9 h-5 rounded-full relative transition-all duration-300",
+                                draftElement.required ? "bg-brand-blue shadow-sm shadow-brand-blue/30" : "bg-brand-border border border-brand-border"
                               )}
                             >
-                              {n}
+                              <div className={cn(
+                                "absolute top-1 w-3 h-3 bg-white rounded-full transition-all duration-300 shadow-sm",
+                                draftElement.required ? "right-1" : "left-1"
+                              )} />
                             </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {['text', 'paragraph', 'email', 'number'].includes(selectedElement.type) && (
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Placeholder Text</label>
-                        <input 
-                          type="text"
-                          value={selectedElement.properties?.placeholder || ''}
-                          onChange={(e) => updateElement(selectedElement.id, { properties: { ...selectedElement.properties, placeholder: e.target.value } })}
-                          className="w-full bg-brand-bg/50 border border-brand-border rounded-xl px-4 py-3 text-sm font-bold text-brand-dark focus:bg-white focus:ring-1 focus:ring-brand-blue/20 transition-all outline-none"
-                        />
-                      </div>
-                    )}
-
-                    {['radio', 'checkbox', 'dropdown'].includes(selectedElement.type) && (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Options</label>
-                          <button 
-                            onClick={() => {
-                              const options = [...(selectedElement.properties?.options || [])];
-                              options.push(`Option ${options.length + 1}`);
-                              updateElement(selectedElement.id, { properties: { ...selectedElement.properties, options } });
-                            }}
-                            className="text-[10px] font-bold text-brand-blue uppercase tracking-widest hover:underline"
-                          >
-                            + Add Option
-                          </button>
-                        </div>
-                        <div className="space-y-2">
-                          {(selectedElement.properties?.options || []).map((opt: string, idx: number) => (
-                            <div key={idx} className="flex items-center gap-2">
+                          </div>
+                          
+                          <div className="flex items-center justify-between p-4 bg-brand-bg/50 rounded-xl border border-brand-border">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-xs font-bold text-brand-dark">Question Weightage</span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-white rounded-lg border border-brand-border p-1">
                               <input 
-                                type="text"
-                                value={opt}
+                                type="number" 
+                                min="0"
+                                max="100"
+                                value={draftElement.properties?.weightage || 1}
                                 onChange={(e) => {
-                                  const options = [...(selectedElement.properties?.options || [])];
-                                  options[idx] = e.target.value;
-                                  updateElement(selectedElement.id, { properties: { ...selectedElement.properties, options } });
+                                  const weightage = parseInt(e.target.value) || 0;
+                                  setDraftElement(prev => prev ? ({ 
+                                    ...prev, 
+                                    properties: { ...prev.properties, weightage } 
+                                  }) : null);
                                 }}
-                                className="flex-1 bg-brand-bg/50 border border-brand-border rounded-lg px-3 py-2 text-xs font-bold text-brand-dark focus:bg-white transition-all outline-none"
+                                className="w-12 text-center text-xs font-bold text-brand-blue outline-none"
                               />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Specific Configs */}
+                      {draftElement.type === 'rating' && (
+                        <div className="space-y-4">
+                          <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Rating Range</label>
+                          <div className="grid grid-cols-5 gap-2">
+                            {[3, 4, 5, 7, 10].map(n => (
+                              <button 
+                                key={n}
+                                onClick={() => setDraftElement(prev => prev ? ({ 
+                                  ...prev, 
+                                  properties: { ...prev.properties, range: n } 
+                                }) : null)}
+                                className={cn(
+                                  "h-10 rounded-lg border text-[10px] font-bold transition-all",
+                                  draftElement.properties?.range === n 
+                                    ? "bg-brand-blue text-white border-brand-blue" 
+                                    : "bg-white text-brand-gray border-brand-border hover:border-brand-blue/30"
+                                )}
+                              >
+                                {n}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {['radio', 'checkbox', 'dropdown'].includes(draftElement.type) && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Options</label>
+                            <button 
+                              onClick={() => {
+                                const options = [...(draftElement.properties?.options || [])];
+                                options.push(`Option ${options.length + 1}`);
+                                setDraftElement(prev => prev ? ({ 
+                                  ...prev, 
+                                  properties: { ...prev.properties, options } 
+                                }) : null);
+                              }}
+                              className="text-[10px] font-bold text-brand-blue uppercase tracking-widest hover:underline"
+                            >
+                              + Add Option
+                            </button>
+                          </div>
+                          <div className="space-y-2">
+                            {(draftElement.properties?.options || []).map((opt: string, idx: number) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <input 
+                                  type="text"
+                                  value={opt}
+                                  onChange={(e) => {
+                                    const options = [...(draftElement.properties?.options || [])];
+                                    options[idx] = e.target.value;
+                                    setDraftElement(prev => prev ? ({ 
+                                      ...prev, 
+                                      properties: { ...prev.properties, options } 
+                                    }) : null);
+                                  }}
+                                  className="flex-1 bg-brand-bg/50 border border-brand-border rounded-lg px-3 py-2 text-xs font-bold text-brand-dark focus:bg-white transition-all outline-none"
+                                />
+                                <button 
+                                  onClick={() => {
+                                    const options = (draftElement.properties?.options || []).filter((_: any, i: number) => i !== idx);
+                                    setDraftElement(prev => prev ? ({ 
+                                      ...prev, 
+                                      properties: { ...prev.properties, options } 
+                                    }) : null);
+                                  }}
+                                  className="p-2 text-brand-gray hover:text-red-500"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Global & Library Section */}
+                      <div className="pt-8 border-t border-brand-border space-y-6">
+                        <div className="space-y-4">
+                          <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Library & Classification</label>
+                          
+                          <div className="p-4 bg-brand-bg/50 rounded-xl border border-brand-border space-y-3">
+                            <span className="text-xs font-bold text-brand-dark block">Question Category</span>
+                            <div className="relative">
+                              <select 
+                                value={draftElement.category}
+                                onChange={(e) => {
+                                  if (e.target.value === 'ADD_NEW') {
+                                    setShowCategoryInput(true);
+                                  } else {
+                                    setDraftElement(prev => prev ? ({ ...prev, category: e.target.value }) : null);
+                                    setShowCategoryInput(false);
+                                  }
+                                }}
+                                className="w-full bg-white border border-brand-border rounded-xl px-4 py-2.5 text-xs font-bold text-brand-dark focus:ring-1 focus:ring-brand-blue/20 outline-none appearance-none transition-all cursor-pointer"
+                              >
+                                {categories.map(cat => (
+                                  <option key={cat} value={cat.toUpperCase()}>{cat}</option>
+                                ))}
+                                <option value="ADD_NEW" className="text-brand-blue font-bold">+ Add new category...</option>
+                              </select>
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-brand-gray">
+                                <ChevronDown size={14} />
+                              </div>
+                            </div>
+
+                            <AnimatePresence>
+                              {showCategoryInput && (
+                                <Motion.div 
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  className="overflow-hidden space-y-2"
+                                >
+                                  <input 
+                                    autoFocus
+                                    type="text"
+                                    placeholder="Enter category name..."
+                                    value={newCategoryName}
+                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
+                                    className="w-full bg-white border border-brand-blue/30 rounded-lg px-3 py-2 text-xs font-bold text-brand-dark outline-none"
+                                  />
+                                  <div className="flex gap-2">
+                                    <button 
+                                      onClick={handleAddCategory}
+                                      className="flex-1 py-2 bg-brand-blue text-white rounded-lg text-[9px] font-bold uppercase tracking-widest"
+                                    >
+                                      Create
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        setShowCategoryInput(false);
+                                        setNewCategoryName('');
+                                      }}
+                                      className="flex-1 py-2 bg-brand-bg text-brand-gray rounded-lg text-[9px] font-bold uppercase tracking-widest"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </Motion.div>
+                              )}
+                            </AnimatePresence>
+
+                            <div className="pt-2 border-t border-brand-border/50">
                               <button 
                                 onClick={() => {
-                                  const options = (selectedElement.properties?.options || []).filter((_: any, i: number) => i !== idx);
-                                  updateElement(selectedElement.id, { properties: { ...selectedElement.properties, options } });
+                                  toast.success('Added to Question Bank');
                                 }}
-                                className="p-2 text-brand-gray hover:text-red-500"
+                                className="w-full py-3 bg-white border border-brand-blue/30 text-brand-blue rounded-xl text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-brand-blue/5 transition-all flex items-center justify-center gap-2 group"
                               >
-                                <X size={14} />
+                                <Database size={12} className="group-hover:scale-110 transition-transform" />
+                                Add to Question Bank
                               </button>
                             </div>
-                          ))}
+                          </div>
                         </div>
                       </div>
-                    )}
 
-                    <div className="pt-6 border-t border-brand-border">
-                      <div className="bg-brand-blue/5 p-4 rounded-xl border border-brand-blue/10 flex gap-3">
-                        <Info size={16} className="text-brand-blue shrink-0 mt-0.5" />
-                        <p className="text-[10px] leading-relaxed text-brand-blue font-bold uppercase tracking-tight">
-                          Changes are autosaved. Preview your form to see interactive states.
-                        </p>
+                      <div className="pt-6">
+                        <div className="bg-brand-bg/50 p-4 rounded-xl border border-brand-border flex gap-3">
+                          <Info size={16} className="text-brand-gray shrink-0 mt-0.5" />
+                          <p className="text-[10px] leading-relaxed text-brand-gray font-bold uppercase tracking-tight">
+                            Review changes above. Click Save at the bottom to commit your updates.
+                          </p>
+                        </div>
                       </div>
+                    </Motion.div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-20">
+                      <div className="w-20 h-20 bg-brand-bg rounded-full flex items-center justify-center text-brand-gray/20 mb-6 border border-brand-border/50 animate-pulse">
+                        <Settings size={40} />
+                      </div>
+                      <h4 className="text-sm font-bold text-brand-dark mb-2 uppercase tracking-tight">Canvas Focus</h4>
+                      <p className="text-xs text-brand-gray leading-relaxed font-medium">
+                        Select an element on the canvas to configure its settings and logic.
+                      </p>
                     </div>
-                  </Motion.div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-center py-20">
-                    <div className="w-20 h-20 bg-brand-bg rounded-full flex items-center justify-center text-brand-gray/20 mb-6 border border-brand-border/50 animate-pulse">
-                      <Settings size={40} />
-                    </div>
-                    <h4 className="text-sm font-bold text-brand-dark mb-2 uppercase tracking-tight">Canvas Focus</h4>
-                    <p className="text-xs text-brand-gray leading-relaxed font-medium">
-                      Select an element on the canvas to configure its settings and logic.
-                    </p>
+                  )}
+                </AnimatePresence>
+              </div>
+              
+              <div className="p-6 border-t border-brand-border bg-white shrink-0">
+                <button 
+                  className="w-full py-4 bg-brand-blue text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-xl shadow-brand-blue/20 hover:bg-brand-blue/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleSaveProperties}
+                  disabled={!draftElement}
+                >
+                  <CheckCircle2 size={14} />
+                  Save
+                </button>
+              </div>
+            </>
+          ) : activeTab === 'preview' ? (
+            /* Share Panel */
+            <>
+              <div className="p-6 border-b border-brand-border shrink-0 bg-white/50">
+                <h2 className="text-sm font-bold text-brand-dark uppercase tracking-widest flex items-center gap-2">
+                  <Share2 size={16} className="text-brand-blue" />
+                  Share Form
+                </h2>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
+                <div className="space-y-4">
+                  <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Public Link</label>
+                  <div className="flex items-center gap-2 bg-brand-bg/50 border border-brand-border rounded-xl p-2 pl-4">
+                    <span className="text-xs font-bold text-brand-gray truncate flex-1">lymbus.ai/f/e7r9...</span>
+                    <button className="p-2 text-brand-blue hover:bg-white rounded-lg transition-all shadow-sm">
+                      <Copy size={14} />
+                    </button>
                   </div>
-                )}
-              </AnimatePresence>
-            </div>
-            
-            <div className="p-6 border-t border-brand-border bg-white shrink-0 space-y-3">
-              <button 
-                className="w-full py-3 bg-brand-bg border border-brand-border rounded-xl text-[10px] font-bold uppercase tracking-widest text-brand-gray hover:bg-white transition-all"
-                onClick={() => setSelectedElementId(null)}
-              >
-                Clear Selection
-              </button>
-              <button 
-                className="w-full py-3 bg-brand-blue text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-brand-blue/20 hover:bg-brand-blue/90 transition-all flex items-center justify-center gap-2"
-                onClick={() => toast.success('Form layout saved')}
-              >
-                <CheckCircle2 size={14} />
-                Save Layout
-              </button>
-            </div>
-          </>
-        )}
-      </aside>
+                </div>
+
+                <div className="space-y-4">
+                   <label className="text-[10px] font-bold text-brand-gray uppercase tracking-widest block opacity-60">Distribute Via</label>
+                   <div className="grid grid-cols-2 gap-3">
+                     <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-brand-border hover:border-brand-blue/30 hover:bg-brand-blue/5 transition-all group">
+                       <div className="w-10 h-10 rounded-full bg-brand-bg group-hover:bg-brand-blue group-hover:text-white flex items-center justify-center text-brand-gray transition-colors">
+                         <Mail size={18} />
+                       </div>
+                       <span className="text-[10px] font-bold uppercase tracking-widest text-brand-dark">Email</span>
+                     </button>
+                     <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-brand-border hover:border-brand-blue/30 hover:bg-brand-blue/5 transition-all group">
+                       <div className="w-10 h-10 rounded-full bg-brand-bg group-hover:bg-brand-blue group-hover:text-white flex items-center justify-center text-brand-gray transition-colors">
+                         <QrCode size={18} />
+                       </div>
+                       <span className="text-[10px] font-bold uppercase tracking-widest text-brand-dark">QR Code</span>
+                     </button>
+                     <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-brand-border hover:border-brand-blue/30 hover:bg-brand-blue/5 transition-all group">
+                       <div className="w-10 h-10 rounded-full bg-brand-bg group-hover:bg-brand-blue group-hover:text-white flex items-center justify-center text-brand-gray transition-colors">
+                         <LinkIcon size={18} />
+                       </div>
+                       <span className="text-[10px] font-bold uppercase tracking-widest text-brand-dark">Embed</span>
+                     </button>
+                     <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-brand-border hover:border-brand-blue/30 hover:bg-brand-blue/5 transition-all group">
+                       <div className="w-10 h-10 rounded-full bg-brand-bg group-hover:bg-brand-blue group-hover:text-white flex items-center justify-center text-brand-gray transition-colors">
+                         <Globe size={18} />
+                       </div>
+                       <span className="text-[10px] font-bold uppercase tracking-widest text-brand-dark">Social</span>
+                     </button>
+                   </div>
+                </div>
+
+                <div className="p-4 bg-brand-blue/5 rounded-2xl border border-brand-blue/10">
+                  <div className="flex items-start gap-3">
+                    <Info size={16} className="text-brand-blue mt-0.5 shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-bold text-brand-blue mb-1">Status: Draft</h4>
+                      <p className="text-[10px] leading-relaxed text-brand-blue/80 font-medium">
+                        Publish your form to start collecting responses.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-brand-border bg-white shrink-0">
+                 <button 
+                  className="w-full py-3 bg-brand-blue text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-brand-blue/20 hover:bg-brand-blue/90 transition-all flex items-center justify-center gap-2"
+                  onClick={() => toast.success('Form published successfully')}
+                >
+                  <Globe size={14} />
+                  Publish Form
+                </button>
+              </div>
+            </>
+          ) : (
+            /* Resource Library Panel */
+            <>
+              <div className="p-6 border-b border-brand-border shrink-0 bg-white/50">
+                <h2 className="text-sm font-bold text-brand-dark uppercase tracking-widest flex items-center gap-2">
+                  <Database size={16} className="text-brand-blue" />
+                  Resource Library
+                </h2>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex border-b border-brand-border shrink-0">
+                {[
+                  { id: 'questions', label: 'Question Bank', icon: LayoutGrid },
+                  { id: 'files', label: 'Files', icon: Paperclip },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setLibraryTab(tab.id as any);
+                      setLibrarySearch('');
+                      setActiveFilter(null);
+                    }}
+                    className={cn(
+                      "flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all relative",
+                      libraryTab === tab.id ? "text-brand-blue" : "text-brand-gray hover:text-brand-dark"
+                    )}
+                  >
+                    {tab.label}
+                    {libraryTab === tab.id && (
+                      <Motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-blue" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search & Filters */}
+              <div className="p-4 space-y-3 shrink-0">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gray" />
+                  <input 
+                    type="text" 
+                    placeholder={`Search ${libraryTab}...`}
+                    value={librarySearch}
+                    onChange={(e) => setLibrarySearch(e.target.value)}
+                    className="w-full bg-brand-bg/50 border border-brand-border rounded-xl pl-9 pr-4 py-2.5 text-xs font-medium focus:bg-white focus:ring-1 focus:ring-brand-blue/20 transition-all outline-none"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                  <button 
+                    onClick={() => setActiveFilter(null)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[9px] font-bold uppercase tracking-widest whitespace-nowrap transition-all",
+                      !activeFilter ? "bg-brand-blue text-white border-brand-blue" : "bg-white text-brand-gray border-brand-border hover:border-brand-blue/30"
+                    )}
+                  >
+                    All
+                  </button>
+                  {(libraryTab === 'questions' ? categories : ['PDF', 'IMAGE', 'DOC']).map((filter) => (
+                    <button 
+                      key={filter}
+                      onClick={() => setActiveFilter(filter)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[9px] font-bold uppercase tracking-widest whitespace-nowrap transition-all",
+                        activeFilter === filter ? "bg-brand-blue text-white border-brand-blue" : "bg-white text-brand-gray border-brand-border hover:border-brand-blue/30"
+                      )}
+                    >
+                      {filter}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* List Content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-hide">
+                <AnimatePresence mode="popLayout">
+                  {libraryTab === 'questions' ? (
+                    filteredQuestions.length > 0 ? (
+                      filteredQuestions.map((q, idx) => (
+                        <Motion.button
+                          key={q.text}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className="w-full p-4 rounded-2xl bg-white border border-brand-border hover:border-brand-blue/30 hover:shadow-md transition-all text-left group flex flex-col gap-3"
+                          onClick={() => {
+                            addElement({
+                              type: q.type.toLowerCase().includes('yes/no') ? 'yesno' : q.type.toLowerCase().includes('rating') ? 'rating' : 'text',
+                              label: q.type,
+                              icon: q.type.toLowerCase().includes('yes/no') ? CheckCircle2 : q.type.toLowerCase().includes('rating') ? Star : Type,
+                              category: q.category.toUpperCase()
+                            } as any);
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold text-brand-blue bg-brand-blue/5 px-2 py-0.5 rounded-full uppercase tracking-wider">{q.category}</span>
+                            <div className="p-1.5 rounded-lg bg-brand-bg text-brand-gray group-hover:text-brand-blue transition-colors">
+                              <Plus size={12} />
+                            </div>
+                          </div>
+                          <p className="text-xs font-bold text-brand-dark leading-relaxed line-clamp-2">{q.text}</p>
+                        </Motion.button>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                        <FilterX size={32} />
+                        <p className="text-[10px] font-bold uppercase tracking-widest mt-4">No questions found</p>
+                      </div>
+                    )
+                  ) : (
+                    filteredFiles.length > 0 ? (
+                      filteredFiles.map((f, idx) => (
+                        <Motion.button
+                          key={f.name}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className="w-full p-4 rounded-2xl bg-white border border-brand-border hover:border-brand-blue/30 hover:shadow-md transition-all text-left group flex items-center gap-3"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-brand-bg flex items-center justify-center text-brand-gray group-hover:bg-brand-blue/10 group-hover:text-brand-blue transition-colors shrink-0">
+                            {f.type === 'IMAGE' ? <ImageIcon size={18} /> : <FileText size={18} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-brand-dark truncate">{f.name}</p>
+                            <p className="text-[9px] font-bold text-brand-gray uppercase tracking-wider mt-0.5">{f.size} • {f.date}</p>
+                          </div>
+                          <div className="p-1.5 rounded-lg bg-brand-bg text-brand-gray group-hover:text-brand-blue transition-colors opacity-0 group-hover:opacity-100">
+                             <Plus size={12} />
+                          </div>
+                        </Motion.button>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                        <FilterX size={32} />
+                        <p className="text-[10px] font-bold uppercase tracking-widest mt-4">No files found</p>
+                      </div>
+                    )
+                  )}
+                </AnimatePresence>
+              </div>
+
+
+            </>
+          )}
+        </Motion.aside>
+      </AnimatePresence>
     </div>
   );
 };

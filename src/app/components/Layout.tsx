@@ -6,6 +6,7 @@ import { Engagement } from './Engagement';
 import { LymbusModule } from './LymbusModule';
 import { LymbusAssistant } from './LymbusAssistant';
 import { DepartmentDetailView } from './DepartmentDetailView';
+import { LocationDetailView } from './LocationDetailView';
 import { HelpSupport } from './HelpSupport';
 import { Settings } from './Settings';
 import { Menu, X, ArrowLeft } from 'lucide-react';
@@ -23,10 +24,11 @@ export const Layout: React.FC<LayoutProps> = ({ onLogout }) => {
   const [search, setSearch] = useState('');
   const [headersHidden, setHeadersHidden] = useState(false);
   const [selectedDept, setSelectedDept] = useState<any>(null);
+  const [selectedLoc, setSelectedLoc] = useState<any>(null);
 
   React.useEffect(() => {
     window.scrollTo(0, 0);
-  }, [selectedDept, activeTab]);
+  }, [selectedDept, selectedLoc, activeTab]);
 
   const { scrollY } = useScroll();
 
@@ -49,9 +51,18 @@ export const Layout: React.FC<LayoutProps> = ({ onLogout }) => {
       );
     }
 
+    if (selectedLoc) {
+      return (
+        <LocationDetailView 
+          location={selectedLoc} 
+          onClose={() => setSelectedLoc(null)} 
+        />
+      );
+    }
+
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard search={search} onSelectDept={setSelectedDept} />;
+        return <Dashboard search={search} onSelectDept={setSelectedDept} onSelectLoc={setSelectedLoc} />;
       case 'engagement':
         return <Engagement search={search} />;
       case 'benchmarking':
@@ -100,9 +111,12 @@ export const Layout: React.FC<LayoutProps> = ({ onLogout }) => {
         className="lg:hidden h-16 bg-card border-b border-brand-border flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-[60]"
       >
         <div className="flex items-center gap-2">
-          {selectedDept ? (
+          {(selectedDept || selectedLoc) ? (
             <button 
-              onClick={() => setSelectedDept(null)}
+              onClick={() => {
+                setSelectedDept(null);
+                setSelectedLoc(null);
+              }}
               className="p-2 -ml-2 hover:bg-brand-bg rounded-lg text-brand-blue"
             >
               <ArrowLeft size={24} />
@@ -113,7 +127,7 @@ export const Layout: React.FC<LayoutProps> = ({ onLogout }) => {
             </div>
           )}
           <h1 className="text-brand-dark text-lg font-bold">
-            {selectedDept ? selectedDept.name : 'Lymbus AI'}
+            {selectedDept ? selectedDept.name : selectedLoc ? selectedLoc.name : 'Lymbus AI'}
           </h1>
         </div>
         <button 
@@ -149,7 +163,7 @@ export const Layout: React.FC<LayoutProps> = ({ onLogout }) => {
 
       {/* Main Content */}
       <main className="flex-1 lg:pl-[280px] pt-16 lg:pt-0">
-        {!selectedDept && (
+        {(!selectedDept && !selectedLoc) && (
           <>
             <div className="hidden lg:block">
               <Header title={getTitle()} search={search} setSearch={setSearch} />
@@ -170,12 +184,12 @@ export const Layout: React.FC<LayoutProps> = ({ onLogout }) => {
           </>
         )}
         
-        <div className={`min-h-[calc(100vh-64px)] overflow-x-hidden relative ${!selectedDept ? 'lg:pt-16 pt-16' : ''}`}>
+        <div className={`min-h-[calc(100vh-64px)] overflow-x-hidden relative ${(!selectedDept && !selectedLoc) ? 'lg:pt-16 pt-16' : ''}`}>
           {renderContent()}
         </div>
       </main>
 
-      {activeTab === 'dashboard' && !selectedDept && <LymbusAssistant />}
+      {activeTab === 'dashboard' && !selectedDept && !selectedLoc && <LymbusAssistant />}
     </div>
   );
 };

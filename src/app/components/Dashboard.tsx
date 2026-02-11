@@ -52,7 +52,7 @@ const departmentData = [
 const locationData = [
   { name: 'Main Hospital', requests: '2,800', responses: '2,100', rate: '75%', rating: '4.5/5', negatives: '3%' },
   { name: 'East Wing', requests: '2,800', responses: '2,100', rate: '75%', rating: '4.5/5', negatives: '15%' },
-  { name: 'West Wing', requests: '2,800', responses: '2,100', rate: '75%', rating: '4.5/5', negatives: '7%' },
+  { name: 'West Clinic', requests: '2,800', responses: '2,100', rate: '75%', rating: '4.5/5', negatives: '7%' },
   { name: 'North Center', requests: '2,800', responses: '2,100', rate: '75%', rating: '4.5/5', negatives: '3%' },
 ];
 
@@ -116,7 +116,7 @@ const StatCard = ({ title, value, change, positive = true, icon: Icon, colorClas
   );
 };
 
-export const Dashboard = ({ search = '', onSelectDept }: { search?: string, onSelectDept?: (dept: any) => void }) => {
+export const Dashboard = ({ search = '', onSelectDept, onSelectLoc }: { search?: string, onSelectDept?: (dept: any) => void, onSelectLoc?: (loc: any) => void }) => {
   const [selectedAlert, setSelectedAlert] = React.useState<any>(null);
   const [deptSort, setDeptSort] = React.useState({ key: 'name', order: 'asc' });
   const [locSort, setLocSort] = React.useState({ key: 'name', order: 'asc' });
@@ -584,24 +584,33 @@ export const Dashboard = ({ search = '', onSelectDept }: { search?: string, onSe
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-          <div className="bg-card p-6 rounded-[24px] border border-brand-border">
+          <div 
+            className="bg-card p-6 rounded-[24px] border border-brand-border cursor-pointer hover:border-brand-blue/30 transition-all active:scale-[0.98]"
+            onClick={() => onSelectLoc?.(locationData[2])} // West Clinic
+          >
             <p className="text-[10px] font-bold text-brand-gray uppercase tracking-wider mb-4">Best Performing</p>
             <h4 className="text-xl lg:text-[24px] font-bold text-brand-dark mb-4">West Clinic</h4>
             <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full uppercase">84% Experience Score</span>
           </div>
-          <div className="bg-card p-6 rounded-[24px] border border-brand-border">
+          <div 
+            className="bg-card p-6 rounded-[24px] border border-brand-border cursor-pointer hover:border-brand-blue/30 transition-all active:scale-[0.98]"
+            onClick={() => onSelectLoc?.(locationData[3])} // North Center
+          >
             <p className="text-[10px] font-bold text-brand-gray uppercase tracking-wider mb-4">Response Fatigue</p>
             <h4 className="text-xl lg:text-[24px] font-bold text-brand-dark mb-4">North Center</h4>
             <span className="text-[10px] font-bold text-orange-500 bg-orange-500/10 px-3 py-1 rounded-full uppercase">62% Response Rate</span>
           </div>
-          <div className="bg-card p-6 rounded-[24px] border border-brand-border">
+          <div 
+            className="bg-card p-6 rounded-[24px] border border-brand-border cursor-pointer hover:border-brand-blue/30 transition-all active:scale-[0.98]"
+            onClick={() => onSelectLoc?.(locationData[3])} // North Center
+          >
             <p className="text-[10px] font-bold text-brand-gray uppercase tracking-wider mb-4">High Complaint Density</p>
             <h4 className="text-xl lg:text-[24px] font-bold text-brand-dark mb-4">North Center</h4>
             <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-3 py-1 rounded-full uppercase">15% Negative Feedback</span>
           </div>
         </div>
 
-        {/* Location Table */}
+        {/* Location Performance View */}
         <div className="bg-card rounded-[24px] border border-brand-border overflow-hidden">
           <div className="p-6 flex items-center justify-between border-b border-brand-border">
             <h3 className="text-lg font-bold text-brand-dark">Location Performance</h3>
@@ -614,7 +623,41 @@ export const Dashboard = ({ search = '', onSelectDept }: { search?: string, onSe
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile View: Cards */}
+          <div className="block lg:hidden divide-y divide-brand-border">
+            {filteredLocs.map((loc, i) => (
+              <div 
+                key={i} 
+                className="p-4 space-y-3 active:bg-brand-bg transition-colors cursor-pointer"
+                onClick={() => onSelectLoc?.(loc)}
+              >
+                <div className="flex justify-between items-start">
+                  <h4 className="font-bold text-brand-dark">{loc.name}</h4>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${parseInt(loc.negatives) > 10 ? 'bg-red-500/10 text-red-500' : 'bg-brand-bg text-brand-gray'}`}>
+                    {loc.negatives} Negatives
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[9px] text-brand-gray font-bold uppercase tracking-widest mb-0.5">Requests/Resp</p>
+                    <p className="text-xs font-bold text-brand-dark">{loc.requests} / {loc.responses}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-brand-gray font-bold uppercase tracking-widest mb-0.5">Response Rate</p>
+                    <p className="text-xs font-bold text-brand-dark">{loc.rate}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-brand-gray font-bold uppercase tracking-widest mb-0.5">Rating</p>
+                    <p className="text-xs font-bold text-brand-dark">{loc.rating}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop View: Table */}
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-brand-bg/30 text-[10px] uppercase tracking-wider text-brand-gray font-bold">
@@ -645,7 +688,11 @@ export const Dashboard = ({ search = '', onSelectDept }: { search?: string, onSe
               </thead>
               <tbody className="divide-y divide-brand-border">
                 {filteredLocs.map((loc, i) => (
-                  <tr key={i} className="hover:bg-brand-bg/20 transition-colors group">
+                  <tr 
+                    key={i} 
+                    className="hover:bg-brand-bg/20 transition-colors group cursor-pointer"
+                    onClick={() => onSelectLoc?.(loc)}
+                  >
                     <td className="px-6 py-4 text-sm font-bold text-brand-dark">{loc.name}</td>
                     <td className="px-6 py-4 text-sm font-medium text-brand-gray">{loc.requests}</td>
                     <td className="px-6 py-4 text-sm font-medium text-brand-gray">{loc.responses}</td>

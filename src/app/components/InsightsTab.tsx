@@ -269,11 +269,7 @@ export const InsightsTab = () => {
             >
               {isMounted && (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart 
-                    data={performanceByChannelData} 
-                    margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
-                    barGap={0}
-                  >
+                  <BarChart data={performanceByChannelData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--brand-border)" />
                     <XAxis dataKey="name" axisLine={true} tickLine={true} tick={{ fontSize: 12, fill: 'var(--brand-gray)', fontWeight: 'bold' }} dy={10} />
                     <YAxis axisLine={true} tickLine={true} tick={{ fontSize: 12, fill: 'var(--brand-gray)', fontWeight: 'bold' }} />
@@ -287,9 +283,9 @@ export const InsightsTab = () => {
                         backgroundColor: 'var(--card)'
                       }}
                     />
-                    <Bar dataKey="Sent" fill="var(--chart-1)" radius={[4, 4, 0, 0]} barSize={32} />
-                    <Bar dataKey="Opened" fill="var(--chart-2)" radius={[4, 4, 0, 0]} barSize={32} />
-                    <Bar dataKey="Clicked" fill="var(--chart-3)" radius={[4, 4, 0, 0]} barSize={32} />
+                    <Bar dataKey="Sent" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Opened" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Clicked" fill="var(--chart-3)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
