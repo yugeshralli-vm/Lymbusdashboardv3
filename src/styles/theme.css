@@ -1,0 +1,213 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+  --background: #f5f7f7;
+  --foreground: #09156a;
+  --card: #ffffff;
+  --card-foreground: #09156a;
+  --popover: #ffffff;
+  --popover-foreground: #09156a;
+  --primary: #374DEA;
+  --primary-foreground: #ffffff;
+  --secondary: #6a7282;
+  --secondary-foreground: #ffffff;
+  --muted: #f3f4f6;
+  --muted-foreground: #6a7282;
+  --accent: #e9ebef;
+  --accent-foreground: #374DEA;
+  --destructive: #ff4d4f;
+  --destructive-foreground: #ffffff;
+  --border: #eeeeee;
+  --input: #f5f7f7;
+  --input-background: #f5f7f7;
+  --radius: 12px;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #6a7282;
+  --sidebar-primary: #374DEA;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-border: #eeeeee;
+  
+  /* Lymbus AI Specific */
+  --brand-blue: #374DEA;
+  --brand-dark: #09156a;
+  --brand-gray: #6a7282;
+  --brand-bg: #f5f7f7;
+  --brand-border: #eeeeee;
+  --brand-success: #00d08a;
+
+  /* Chart Colors */
+  --chart-1: #374DEA;
+  --chart-2: #34d399;
+  --chart-3: #93c5fd;
+  
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  --item-color: var(--brand-blue);
+}
+
+[data-theme="classic"] {
+  --primary: #0076BF;
+  --brand-blue: #0076BF;
+  --sidebar-primary: #0076BF;
+  --accent-foreground: #0076BF;
+  --brand-success: #00d08a;
+  --chart-1: #0076BF;
+}
+
+[data-theme="vibrant"] {
+  --primary: #FF7A00;
+  --brand-blue: #FF7A00;
+  --brand-dark: #2D3436;
+  --brand-gray: #636E72;
+  --accent-foreground: #0984E3;
+  --sidebar-primary: #FF7A00;
+  --foreground: #2D3436;
+  --brand-yellow: #FDCB6E;
+  --brand-red: #D63031;
+  --brand-green: #00B894;
+  --brand-success: #00B894;
+  --destructive: #D63031;
+  --chart-1: #FF7A00;
+  --chart-2: #0984E3;
+  --chart-3: #FDCB6E;
+}
+
+[data-theme="dark-cyan"] {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --card: #1e293b;
+  --card-foreground: #f8fafc;
+  --popover: #1e293b;
+  --popover-foreground: #f8fafc;
+  --primary: #22d3ee;
+  --primary-foreground: #0f172a;
+  --secondary: #334155;
+  --secondary-foreground: #f8fafc;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #334155;
+  --accent-foreground: #22d3ee;
+  --destructive: #ef4444;
+  --destructive-foreground: #f8fafc;
+  --border: #334155;
+  --input: #1e293b;
+  --input-background: #1e293b;
+  --sidebar: #0f172a;
+  --sidebar-foreground: #94a3b8;
+  --sidebar-primary: #22d3ee;
+  --sidebar-primary-foreground: #0f172a;
+  --sidebar-border: #334155;
+  
+  /* Lymbus AI Specific */
+  --brand-blue: #22d3ee;
+  --brand-dark: #f8fafc;
+  --brand-gray: #94a3b8;
+  --brand-bg: #1e293b;
+  --brand-border: #334155;
+  --brand-success: #34d399;
+
+  /* Neon Chart Colors */
+  --chart-1: #00f2ff; /* Neon Cyan */
+  --chart-2: #00ff9f; /* Neon Green */
+  --chart-3: #ff00ea; /* Neon Pink/Purple */
+}
+
+[data-theme="rainbow"] {
+  --background: #fdfdfd;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --brand-blue: #0078C1;
+  --primary: #0078C1;
+  --brand-dark: #1a1a1a;
+  --brand-gray: #4b5563;
+  --brand-bg: #f3f4f6;
+  --brand-border: #e5e7eb;
+  --brand-success: #008D36;
+  --destructive: #F20000;
+  
+  --chart-1: #0078C1; /* Blue */
+  --chart-2: #008D36; /* Green */
+  --chart-3: #FFB800; /* Yellow */
+  --chart-4: #F20000; /* Red */
+
+  /* Sidebar with a colorful gradient accent or unique look */
+  --sidebar: #ffffff;
+  --sidebar-primary: #0078C1;
+  
+  /* Additional colors for a "rainbow" feel in the UI */
+  --rainbow-yellow: #FFB800;
+  --rainbow-red: #F20000;
+  --rainbow-green: #008D36;
+  --rainbow-blue: #0078C1;
+}
+
+/* Rainbow specific UI enhancements */
+[data-theme="rainbow"] .nav-dashboard { --item-color: #0078C1; }
+[data-theme="rainbow"] .nav-lymbus { --item-color: #F20000; }
+[data-theme="rainbow"] .nav-root-cause { --item-color: #FFB800; }
+[data-theme="rainbow"] .nav-benchmarking { --item-color: #008D36; }
+[data-theme="rainbow"] .nav-engagement { --item-color: #0078C1; }
+[data-theme="rainbow"] .nav-escalation { --item-color: #F20000; }
+[data-theme="rainbow"] .nav-reports { --item-color: #FFB800; }
+
+[data-theme="rainbow"] .rainbow-card-yellow { border-top: 4px solid #FFB800; }
+[data-theme="rainbow"] .rainbow-card-red { border-top: 4px solid #F20000; }
+[data-theme="rainbow"] .rainbow-card-green { border-top: 4px solid #008D36; }
+[data-theme="rainbow"] .rainbow-card-blue { border-top: 4px solid #0078C1; }
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-gray: var(--brand-gray);
+  --color-brand-bg: var(--brand-bg);
+  --color-brand-border: var(--brand-border);
+  --color-brand-success: var(--brand-success);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-bold;
+  }
+}
