@@ -315,7 +315,7 @@ export const Dashboard = ({ search = '', onSelectDept, onSelectLoc }: { search?:
       {/* Charts & Alerts */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Line Chart */}
-        <div className="lg:col-span-8 bg-card p-4 sm:p-6 lg:p-8 rounded-[24px] border border-brand-border">
+        <div className="lg:col-span-12 bg-card p-4 sm:p-6 lg:p-8 rounded-[24px] border border-brand-border">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
             <h3 className="text-lg font-bold text-brand-dark">Experience Trends</h3>
             <div className="flex flex-wrap items-center gap-2">
@@ -413,7 +413,7 @@ export const Dashboard = ({ search = '', onSelectDept, onSelectLoc }: { search?:
       </div>
 
         {/* Alerts Panel */}
-        <div className="lg:col-span-4 bg-card p-4 sm:p-6 rounded-[24px] border border-brand-border">
+        <div className="hidden lg:col-span-4 bg-card p-4 sm:p-6 rounded-[24px] border border-brand-border">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-brand-dark">Active Alerts</h3>
             <button className="text-[10px] font-bold text-white bg-emerald-400 px-3 py-1 rounded-full flex items-center gap-1">

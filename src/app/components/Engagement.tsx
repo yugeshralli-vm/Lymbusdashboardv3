@@ -480,16 +480,16 @@ export const Engagement = ({ search = '' }: { search?: string }) => {
           {activeSubTab !== 'forms' && (
             <div className="bg-white p-1 rounded-[12px] border border-[#eee] flex gap-1 w-full sm:w-auto h-10 items-center justify-center">
               <button 
-                onClick={() => setView('list')}
-                className={`flex-1 sm:flex-none p-2 rounded-[12px] transition-colors flex justify-center ${view === 'list' ? 'bg-[#3649e9] text-white' : 'text-[#6a7282] hover:bg-brand-bg'}`}
-              >
-                <List size={18} />
-              </button>
-              <button 
                 onClick={() => setView('grid')}
                 className={`flex-1 sm:flex-none p-2 rounded-[12px] transition-colors flex justify-center ${view === 'grid' ? 'bg-[#3649e9] text-white' : 'text-[#6a7282] hover:bg-brand-bg'}`}
               >
                 <LayoutGrid size={18} />
+              </button>
+              <button 
+                onClick={() => setView('list')}
+                className={`flex-1 sm:flex-none p-2 rounded-[12px] transition-colors flex justify-center ${view === 'list' ? 'bg-[#3649e9] text-white' : 'text-[#6a7282] hover:bg-brand-bg'}`}
+              >
+                <List size={18} />
               </button>
             </div>
           )}
@@ -838,14 +838,14 @@ export const Engagement = ({ search = '' }: { search?: string }) => {
                   </div>
 
                   {/* Stats Grid: 3 columns */}
-                  <div className="grid grid-cols-3 gap-2 mb-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <p className="text-[14px] font-bold text-[#09156a] leading-none mb-1">{(1200 + camp.id * 450).toLocaleString()}</p>
+                      <p className="text-[10px] font-bold text-[#6a7282] uppercase tracking-wider leading-none">Sent</p>
+                    </div>
                     <div>
                       <p className="text-[14px] font-bold text-[#09156a] leading-none mb-1">{camp.delivered}</p>
                       <p className="text-[10px] font-bold text-[#6a7282] uppercase tracking-wider leading-none">Delivered</p>
-                    </div>
-                    <div>
-                      <p className="text-[14px] font-bold text-[#09156a] leading-none mb-1">{camp.opened}</p>
-                      <p className="text-[10px] font-bold text-[#6a7282] uppercase tracking-wider leading-none">Opened</p>
                     </div>
                     <div>
                       <p className="text-[14px] font-bold text-[#09156a] leading-none mb-1">{camp.clicked}</p>

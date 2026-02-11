@@ -3,6 +3,7 @@ import {
   X, 
   ArrowLeft, 
   TrendingUp, 
+  TrendingDown,
   Clock, 
   Users, 
   MessageSquare, 
@@ -18,7 +19,13 @@ import {
   MapPin,
   Building2,
   Phone,
-  ArrowRight
+  ArrowRight,
+  ThumbsUp,
+  ThumbsDown,
+  Minus,
+  Heart,
+  Stethoscope,
+  DollarSign
 } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'motion/react';
 import { 
@@ -31,7 +38,9 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
-  Cell
+  Cell,
+  PieChart,
+  Pie
 } from 'recharts';
 
 interface LocationDetailViewProps {
@@ -56,10 +65,36 @@ const departmentBreakdown = [
   { name: 'Pediatrics', score: 84, status: 'Good' },
 ];
 
+const sentimentDistribution = [
+  { name: 'Positive', value: 68, color: '#10b981' },
+  { name: 'Neutral', value: 18, color: '#f59e0b' },
+  { name: 'Negative', value: 14, color: '#ef4444' },
+];
+
+const sentimentCategories = [
+  { name: 'Staff Friendliness', score: 88, change: 4.2, icon: Users },
+  { name: 'Wait Time', score: 62, change: -2.1, icon: Clock },
+  { name: 'Cleanliness', score: 91, change: 1.8, icon: Sparkles },
+  { name: 'Care Quality', score: 85, change: 3.0, icon: Stethoscope },
+  { name: 'Billing Experience', score: 58, change: -0.4, icon: DollarSign },
+];
+
+const getScoreColor = (score: number) => {
+  if (score >= 80) return 'text-emerald-600';
+  if (score >= 60) return 'text-amber-500';
+  return 'text-red-500';
+};
+
+const getBarColor = (score: number) => {
+  if (score >= 80) return '#10b981';
+  if (score >= 60) return '#f59e0b';
+  return '#ef4444';
+};
+
 const METRIC_DESCRIPTIONS: Record<string, string> = {
   "Experience Score": "Overall patient experience score calculated from all departments in this location.",
   "Response Rate": "The percentage of patients who completed their surveys out of the total requests sent.",
-  "Avg Transit Time": "Average time patients spent moving between departments or stages of care.",
+  "Positive Feedback": "Percentage of surveys containing positive or favorable sentiment.",
   "Negative Feedback": "Percentage of surveys containing critical or negative sentiment."
 };
 
@@ -143,18 +178,10 @@ export const LocationDetailView: React.FC<LocationDetailViewProps> = ({ location
           </button>
           <div className="h-6 w-[1px] bg-brand-border hidden sm:block" />
           <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <Building2 size={16} className="text-brand-blue" />
-              <h2 className="text-lg font-bold text-brand-dark leading-none">{location.name}</h2>
-            </div>
-            <p className="text-[10px] text-brand-gray font-bold uppercase tracking-widest mt-1">Facility Performance Overview</p>
+            <h2 className="text-lg font-bold text-brand-dark leading-none">{location.name}</h2>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-brand-bg rounded-[12px] text-brand-gray text-[10px] font-bold uppercase tracking-wider border border-brand-border">
-            <Calendar size={12} className="text-brand-blue" />
-            Live Analytics
-          </div>
           <button onClick={onClose} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-[12px] text-brand-gray transition-colors border border-transparent hover:border-red-100">
             <X size={20} />
           </button>
@@ -183,11 +210,11 @@ export const LocationDetailView: React.FC<LocationDetailViewProps> = ({ location
             index={1}
           />
           <StatCard 
-            title="Avg Transit Time" 
-            value="12 min" 
-            change="4.5%" 
+            title="Positive Feedback" 
+            value="85%" 
+            change="3.2%" 
             positive={true} 
-            icon={Clock} 
+            icon={ThumbsUp} 
             colorClass="text-green-500" 
             delay={0.2} 
             index={2}
@@ -286,7 +313,7 @@ export const LocationDetailView: React.FC<LocationDetailViewProps> = ({ location
               </div>
               
               <div className="relative z-10">
-                <button className="w-full bg-brand-blue text-white py-4 rounded-[16px] font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all flex items-center justify-center gap-2">
+                <button className="w-full bg-brand-blue text-white py-4 rounded-[16px] font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all flex items-center justify-center gap-2 hidden">
                   <LayoutDashboard size={14} />
                   Optimize Resources
                 </button>
@@ -337,49 +364,83 @@ export const LocationDetailView: React.FC<LocationDetailViewProps> = ({ location
           </div>
 
           <div className="bg-card rounded-[24px] border border-brand-border p-6 flex flex-col">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-50 text-orange-500 rounded-[12px]">
-                  <Phone size={20} />
+                <div className="p-2.5 bg-red-50 text-red-500 rounded-full border border-red-100">
+                  <AlertCircle size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-brand-dark">Location Contact</h3>
-                  <p className="text-[10px] text-brand-gray font-bold uppercase tracking-wider">Management & Operations</p>
+                  <h3 className="text-lg font-bold text-brand-dark">Sentiment Analysis</h3>
+                  <p className="text-[10px] text-brand-gray font-bold uppercase tracking-[0.15em]">Key Improvement Areas</p>
                 </div>
+              </div>
+              <div className="flex items-center gap-1 px-3 py-1.5 bg-red-50 rounded-full border border-red-100">
+                <ArrowUpRight size={11} className="text-red-500" />
+                <span className="text-[11px] font-bold text-red-500">Critical</span>
               </div>
             </div>
 
-            <div className="space-y-6 flex-1">
-              <div className="p-4 rounded-[20px] bg-brand-bg/40 border border-brand-border">
-                <h4 className="text-[10px] font-bold text-brand-gray uppercase tracking-widest mb-3">Facility Manager</h4>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-brand-blue/10 flex items-center justify-center text-brand-blue font-bold">
-                    JW
+            <div className="flex-1 space-y-6">
+              {/* Improvement Areas */}
+              {[
+                { label: 'Wait Times & Intake', mentions: 24, icon: Clock, color: '#ef4444', bgColor: 'bg-red-500', width: '65%' },
+                { label: 'Front Desk Comms', mentions: 12, icon: MessageSquare, color: '#f59e0b', bgColor: 'bg-amber-500', width: '40%' },
+                { label: 'Facility Cleanliness', mentions: 4, icon: Sparkles, color: 'var(--brand-blue)', bgColor: 'bg-brand-blue', width: '15%' },
+              ].map((area, i) => {
+                const AreaIcon = area.icon;
+                return (
+                  <Motion.div
+                    key={area.label}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 + i * 0.08 }}
+                    className="space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <AreaIcon size={16} className="text-brand-dark" />
+                        <span className="text-xs font-bold text-brand-dark uppercase tracking-[0.1em]">{area.label}</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-brand-gray uppercase tracking-[0.1em]">{area.mentions} Mentions</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <Motion.div
+                        className={`h-full rounded-full ${area.bgColor}`}
+                        initial={{ width: 0 }}
+                        animate={{ width: area.width }}
+                        transition={{ duration: 0.8, delay: 0.2 + i * 0.1, ease: 'easeOut' }}
+                      />
+                    </div>
+                  </Motion.div>
+                );
+              })}
+
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Urgent Action Required */}
+              <Motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="p-5 bg-red-50 rounded-[16px] border border-red-100 relative overflow-hidden"
+              >
+                {/* Watermark icon */}
+                <div className="absolute -right-2 -bottom-2 opacity-[0.08] pointer-events-none">
+                  <AlertCircle size={80} className="text-red-500" />
+                </div>
+                <div className="flex items-start gap-3.5 relative z-10">
+                  <div className="p-2 bg-red-100 rounded-full shrink-0 mt-0.5">
+                    <AlertCircle size={16} className="text-red-500" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-brand-dark">Jane Williams</p>
-                    <p className="text-xs text-brand-gray font-medium">Operations Lead • Ext. 402</p>
+                    <h4 className="text-[11px] font-bold text-red-600 uppercase tracking-[0.15em] mb-1.5">Urgent Action Required</h4>
+                    <p className="text-[12px] text-red-700/80 leading-relaxed font-medium">
+                      Wait times have spiked by <span className="font-bold text-red-600 underline decoration-red-300">40%</span> in Dermatology this week. AI suggests immediate resource reallocation to morning intake desks.
+                    </p>
                   </div>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-[20px] bg-brand-bg/40 border border-brand-border">
-                  <h4 className="text-[10px] font-bold text-brand-gray uppercase tracking-widest mb-1">Total Staff</h4>
-                  <p className="text-lg font-bold text-brand-dark">142</p>
-                </div>
-                <div className="p-4 rounded-[20px] bg-brand-bg/40 border border-brand-border">
-                  <h4 className="text-[10px] font-bold text-brand-gray uppercase tracking-widest mb-1">Active Beds</h4>
-                  <p className="text-lg font-bold text-brand-dark">85%</p>
-                </div>
-              </div>
-
-              <div className="p-5 bg-blue-50 rounded-[16px] border border-blue-100 flex items-start gap-4">
-                <Info size={18} className="text-brand-blue shrink-0 mt-0.5" />
-                <p className="text-[11px] text-brand-blue font-bold leading-relaxed">
-                  Resource allocation is currently adjusted for seasonal volume increase. Review staffing levels if satisfaction drops below 80%.
-                </p>
-              </div>
+              </Motion.div>
             </div>
           </div>
         </div>

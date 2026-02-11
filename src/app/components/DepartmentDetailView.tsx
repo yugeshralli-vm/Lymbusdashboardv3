@@ -77,7 +77,8 @@ const METRIC_DESCRIPTIONS: Record<string, string> = {
   "Overall Rating": "Measures patient satisfaction based on post-visit feedback on a scale of 0-5.",
   "Response Rate": "The percentage of patients who completed their surveys out of the total requests sent.",
   "Avg Wait Time": "The average time patients spent waiting before their appointment started.",
-  "Total Surveys": "The total number of survey responses received during this period."
+  "Total Forms": "The total number of form responses received during this period.",
+  "Negative Feedback": "The percentage of responses flagged as negative sentiment during this period."
 };
 
 const StatCard = ({ title, value, change, positive = true, icon: Icon, colorClass, delay = 0, index = 0 }: any) => {
@@ -161,14 +162,9 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
           <div className="h-6 w-[1px] bg-brand-border hidden sm:block" />
           <div className="flex flex-col">
             <h2 className="text-lg font-bold text-brand-dark leading-none">{dept.name}</h2>
-            <p className="text-[10px] text-brand-gray font-bold uppercase tracking-widest mt-1">Detailed Performance Analysis</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-brand-bg rounded-[12px] text-brand-gray text-[10px] font-bold uppercase tracking-wider border border-brand-border">
-            <Calendar size={12} className="text-brand-blue" />
-            Last 30 Days
-          </div>
           <button onClick={onClose} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-[12px] text-brand-gray transition-colors border border-transparent hover:border-red-100">
             <X size={20} />
           </button>
@@ -197,17 +193,17 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
             index={1}
           />
           <StatCard 
-            title="Avg Wait Time" 
-            value="18 min" 
-            change="1.3%" 
+            title="Negative Feedback" 
+            value="15%" 
+            change="0.5%" 
             positive={false} 
-            icon={Clock} 
+            icon={AlertCircle} 
             colorClass="text-red-500" 
             delay={0.2} 
             index={2}
           />
           <StatCard 
-            title="Total Surveys" 
+            title="Total Forms" 
             value={dept.responses} 
             change="2.3%" 
             icon={MessageSquare} 
@@ -311,11 +307,11 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
               </div>
               
               <div className="relative z-10 space-y-3">
-                <button className="w-full bg-white text-brand-blue py-4 rounded-[16px] font-bold text-xs uppercase tracking-widest hover:bg-white/90 transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2">
+                <button className="hidden w-full bg-white text-brand-blue py-4 rounded-[16px] font-bold text-xs uppercase tracking-widest hover:bg-white/90 transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2">
                   <LayoutDashboard size={14} />
                   View Staffing Report
                 </button>
-                <p className="text-[9px] text-center text-white/50 font-bold uppercase tracking-[0.1em]">Updated 12 minutes ago</p>
+                <p className="hidden text-[9px] text-center text-white/50 font-bold uppercase tracking-[0.1em]">Updated 12 minutes ago</p>
               </div>
             </div>
           </div>

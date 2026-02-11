@@ -13,13 +13,11 @@ import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
 const resources = [
   { 
     rank: 1, 
-    initials: 'DEW', 
+    initials: 'EW', 
     name: 'Dr. Emily Watson', 
     image: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBkb2N0b3IlMjBoZWFkc2hvdCUyMHdvbWFufGVufDF8fHx8MTc3MDAwNzMyNnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    title: 'Chief Experience Officer', 
+    title: 'Chief of Medicine', 
     location: 'Central Medical', 
-    resolution: '99%', 
-    response: '< 30s', 
     patients: '1,240', 
     score: 98, 
     color: 'bg-[#FFB800]',
@@ -28,12 +26,10 @@ const resources = [
   { 
     rank: 2, 
     initials: 'MC', 
-    name: 'Michael Chen', 
+    name: 'Dr. Michael Chen', 
     image: 'https://images.unsplash.com/photo-1746258537532-0fff0f0acc56?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBkb2N0b3IlMjBoZWFkc2hvdCUyMG1hbiUyMGFzaWFufGVufDF8fHx8MTc3MDAwNzMyNnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    title: 'Patient Relations Lead', 
+    title: 'Senior Cardiologist', 
     location: 'Eastgate Clinic', 
-    resolution: '97%', 
-    response: '< 45s', 
     patients: '890', 
     score: 96, 
     color: 'bg-[#F20000]',
@@ -42,12 +38,10 @@ const resources = [
   { 
     rank: 3, 
     initials: 'SJ', 
-    name: 'Sarah Johnson', 
+    name: 'Dr. Sarah Johnson', 
     image: 'https://images.unsplash.com/photo-1676552055618-22ec8cde399a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMHdvbWFuJTIwbWVkaWNhbCUyMHN0YWZmfGVufDF8fHx8MTc3MDAwNzMyNnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    title: 'Quality Manager', 
+    title: 'Head of Pediatrics', 
     location: 'Harbor View', 
-    resolution: '95%', 
-    response: '< 1min', 
     patients: '756', 
     score: 94, 
     color: 'bg-[#008D36]',
@@ -55,13 +49,11 @@ const resources = [
   },
   { 
     rank: 4, 
-    initials: 'DJM', 
+    initials: 'JM', 
     name: 'Dr. James Miller', 
     image: 'https://images.unsplash.com/photo-1691935152212-7a1efe77c5d6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBkb2N0b3IlMjBoZWFkc2hvdCUyMG1hbiUyMHdoaXRlfGVufDF8fHx8MTc3MDAwNzMyNnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    title: 'Department Head', 
+    title: 'Orthopedic Surgeon', 
     location: 'Summit Health', 
-    resolution: '94%', 
-    response: '< 1min', 
     patients: '680', 
     score: 92, 
     color: 'bg-[#0078C1]',
@@ -70,12 +62,10 @@ const resources = [
   { 
     rank: 5, 
     initials: 'LT', 
-    name: 'Lisa Thompson', 
+    name: 'Dr. Lisa Thompson', 
     image: 'https://images.unsplash.com/photo-1674049406176-021807a2802e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBudXJzZSUyMHBvcnRyYWl0JTIwd29tYW4lMjBob3NwaXRhbHxlbnwxfHx8fDE3NzAwMDczMjZ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    title: 'Nursing Supervisor', 
+    title: 'General Practitioner', 
     location: 'Northside Hospital', 
-    resolution: '92%', 
-    response: '< 2min', 
     patients: '520', 
     score: 90, 
     color: 'bg-brand-bg text-brand-gray border border-brand-border',
@@ -89,12 +79,12 @@ export const Leaderboard = () => {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-xl font-bold text-brand-dark">Top Performing Resources</h3>
+            <h3 className="text-xl font-bold text-brand-dark">Top Performing Doctors</h3>
             <div className="text-brand-gray/40 hover:text-brand-blue transition-colors cursor-help">
               <Info size={14} />
             </div>
           </div>
-          <p className="text-sm text-brand-gray">Based on resolution rate and response time</p>
+          <p className="text-sm text-brand-gray">Based on patient volume and quality score</p>
         </div>
         <div className="w-10 h-10 bg-brand-bg rounded-xl flex items-center justify-center text-brand-gray">
           <Trophy size={20} />
@@ -145,23 +135,7 @@ export const Leaderboard = () => {
             </div>
 
             {/* Metrics */}
-            <div className="grid grid-cols-2 sm:flex sm:items-center sm:justify-between xl:justify-end gap-4 sm:gap-6 lg:gap-12 xl:min-w-[450px]">
-              <div className="flex flex-col items-start">
-                <div className="flex items-center gap-1.5 text-brand-dark font-bold text-xs lg:text-sm mb-1">
-                  <TrendingUp size={12} className="text-emerald-500" />
-                  {resource.resolution}
-                </div>
-                <span className="text-[9px] lg:text-[10px] font-bold text-brand-gray uppercase tracking-widest">Resolution</span>
-              </div>
-
-              <div className="flex flex-col items-start">
-                <div className="flex items-center gap-1.5 text-brand-blue font-bold text-xs lg:text-sm mb-1">
-                  <Clock size={12} />
-                  {resource.response}
-                </div>
-                <span className="text-[9px] lg:text-[10px] font-bold text-brand-gray uppercase tracking-widest">Response</span>
-              </div>
-
+            <div className="grid grid-cols-2 sm:flex sm:items-center sm:justify-between xl:justify-end gap-4 sm:gap-6 lg:gap-12 xl:min-w-[250px]">
               <div className="flex flex-col items-start">
                 <div className="flex items-center gap-1.5 text-brand-dark font-bold text-xs lg:text-sm mb-1">
                   <Users size={12} className="text-brand-gray" />

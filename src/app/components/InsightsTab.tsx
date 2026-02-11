@@ -7,7 +7,7 @@ import {
 import { 
   Send, Users, Eye, MousePointer, 
   FileText, MessageSquare, CheckSquare, Clock, 
-  TrendingUp, Info,
+  TrendingUp, Info, LogOut,
   ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
@@ -15,8 +15,8 @@ import { cn } from '@/app/components/ui/utils';
 // --- Mock Data ---
 
 const performanceByChannelData = [
-  { name: 'Email', Sent: 1000, Opened: 800, Clicked: 400 },
-  { name: 'SMS', Sent: 3400, Clicked: 600 },
+  { name: 'Email', Sent: 1000, Delivered: 800, Clicked: 400 },
+  { name: 'SMS', Sent: 3400, Delivered: 3100 },
 ];
 
 const surveyStatusData = [
@@ -26,18 +26,18 @@ const surveyStatusData = [
 ];
 
 const performanceTrendData = [
-  { week: 'W1', Sent: 1200, Opened: 850, Clicked: 200 },
-  { week: 'W2', Sent: 1350, Opened: 980, Clicked: 280 },
-  { week: 'W3', Sent: 1500, Opened: 1100, Clicked: 350 },
-  { week: 'W4', Sent: 1800, Opened: 1350, Clicked: 420 },
-  { week: 'W5', Sent: 1700, Opened: 1250, Clicked: 380 },
-  { week: 'W6', Sent: 2100, Opened: 1600, Clicked: 550 },
-  { week: 'W7', Sent: 2400, Opened: 1850, Clicked: 650 },
-  { week: 'W8', Sent: 2300, Opened: 1750, Clicked: 580 },
-  { week: 'W9', Sent: 2800, Opened: 2200, Clicked: 800 },
-  { week: 'W10', Sent: 3100, Opened: 2550, Clicked: 950 },
-  { week: 'W11', Sent: 3400, Opened: 2800, Clicked: 1050 },
-  { week: 'W12', Sent: 3800, Opened: 3100, Clicked: 1200 },
+  { week: 'W1', Sent: 1200, Delivered: 1100, Clicked: 200 },
+  { week: 'W2', Sent: 1350, Delivered: 1250, Clicked: 280 },
+  { week: 'W3', Sent: 1500, Delivered: 1400, Clicked: 350 },
+  { week: 'W4', Sent: 1800, Delivered: 1700, Clicked: 420 },
+  { week: 'W5', Sent: 1700, Delivered: 1600, Clicked: 380 },
+  { week: 'W6', Sent: 2100, Delivered: 2000, Clicked: 550 },
+  { week: 'W7', Sent: 2400, Delivered: 2250, Clicked: 650 },
+  { week: 'W8', Sent: 2300, Delivered: 2100, Clicked: 580 },
+  { week: 'W9', Sent: 2800, Delivered: 2600, Clicked: 800 },
+  { week: 'W10', Sent: 3100, Delivered: 2900, Clicked: 950 },
+  { week: 'W11', Sent: 3400, Delivered: 3200, Clicked: 1050 },
+  { week: 'W12', Sent: 3800, Delivered: 3600, Clicked: 1200 },
 ];
 
 const channelComparisonData = [
@@ -112,7 +112,11 @@ const StatCard = ({ title, value, change, positive = true, icon: Icon, colorClas
       </div>
       <p className="text-[32px] font-bold text-brand-dark leading-tight mb-2">{value}</p>
       <div className="flex items-center gap-1">
-        {positive ? <ArrowUpRight size={14} className="text-green-500" /> : <ArrowDownRight size={14} className="text-red-500" />}
+        {change.startsWith('-') ? (
+          <ArrowDownRight size={14} className={positive ? 'text-green-500' : 'text-red-500'} />
+        ) : (
+          <ArrowUpRight size={14} className={positive ? 'text-green-500' : 'text-red-500'} />
+        )}
         <span className={`text-[12px] font-bold ${positive ? 'text-green-500' : 'text-red-500'}`}>{change}</span>
         <span className="text-[12px] text-brand-gray ml-1">vs last month</span>
       </div>
@@ -135,7 +139,7 @@ const ChartSection = ({
   children: React.ReactNode, 
   info?: string,
   legendItems?: LegendItem[]
-}) => (
+}) => title === "Channel Comparison" ? null : (
   <div className="bg-card p-6 lg:p-8 rounded-[24px] border border-brand-border h-full flex flex-col min-w-0">
     <div className="flex items-center gap-2 mb-6 shrink-0">
       <h3 className="text-lg font-bold text-brand-dark">{title}</h3>
@@ -237,11 +241,11 @@ export const InsightsTab = () => {
               index={1}
             />
             <StatCard 
-              title="Open Rate" 
+              title="Delivered %" 
               value="92.8%" 
               change="5.2%" 
               positive={true} 
-              icon={Eye} 
+              icon={CheckSquare} 
               colorClass="text-green-500"
               index={2}
             />
@@ -263,7 +267,7 @@ export const InsightsTab = () => {
               info="Breakdown of campaign metrics by communication channel"
               legendItems={[
                 { label: 'Sent', color: 'var(--chart-1)' },
-                { label: 'Opened', color: 'var(--chart-2)' },
+                { label: 'Delivered', color: 'var(--chart-2)' },
                 { label: 'Clicked', color: 'var(--chart-3)' },
               ]}
             >
@@ -284,7 +288,7 @@ export const InsightsTab = () => {
                       }}
                     />
                     <Bar dataKey="Sent" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Opened" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Delivered" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="Clicked" fill="var(--chart-3)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -342,7 +346,7 @@ export const InsightsTab = () => {
               info="Weekly progression of key metrics"
               legendItems={[
                 { label: 'Sent', color: 'var(--chart-1)' },
-                { label: 'Opened', color: 'var(--chart-2)' },
+                { label: 'Delivered', color: 'var(--chart-2)' },
                 { label: 'Clicked', color: 'var(--chart-3)' },
               ]}
             >
@@ -354,7 +358,7 @@ export const InsightsTab = () => {
                         <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.1}/>
                         <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0}/>
                       </linearGradient>
-                      <linearGradient id="colorOpened" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id="colorDelivered" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.1}/>
                         <stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0}/>
                       </linearGradient>
@@ -364,7 +368,7 @@ export const InsightsTab = () => {
                     <YAxis axisLine={true} tickLine={true} tick={{ fontSize: 12, fill: 'var(--brand-gray)', fontWeight: 'bold' }} />
                     <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
                     <Area type="monotone" dataKey="Sent" stroke="var(--chart-1)" fillOpacity={1} fill="url(#colorSent)" strokeWidth={3} />
-                    <Area type="monotone" dataKey="Opened" stroke="var(--chart-2)" fillOpacity={1} fill="url(#colorOpened)" strokeWidth={3} />
+                    <Area type="monotone" dataKey="Delivered" stroke="var(--chart-2)" fillOpacity={1} fill="url(#colorDelivered)" strokeWidth={3} />
                     <Area type="monotone" dataKey="Clicked" stroke="var(--chart-3)" fillOpacity={0} fill="var(--chart-3)" strokeWidth={3} />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -374,7 +378,7 @@ export const InsightsTab = () => {
 
           {/* Bottom Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-card p-8 rounded-[24px] border border-brand-border h-full">
+            <div className="bg-card p-8 rounded-[24px] border border-brand-border h-full lg:col-span-2">
               <div className="flex items-center gap-2 mb-8">
                   <h3 className="text-lg font-bold text-brand-dark">Top Performing Campaigns</h3>
                   <Info size={14} className="text-brand-gray/40" />
@@ -452,12 +456,12 @@ export const InsightsTab = () => {
               index={2}
             />
             <StatCard 
-              title="Avg. Time" 
-              value="2.4m" 
-              change="-0.5%" 
+              title="Abandonment Rate" 
+              value="12.4%" 
+              change="-1.2%" 
               positive={true} 
-              icon={Clock} 
-              colorClass="text-green-500" 
+              icon={LogOut} 
+              colorClass="text-red-500" 
               index={3}
             />
           </div>

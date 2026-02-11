@@ -187,7 +187,7 @@ function Icon4() {
 
 function Button1() {
   return (
-    <button className="bg-[#0f172b] h-[40px] relative rounded-[14px] shrink-0 w-full lg:w-[177.086px] hover:bg-[#0f172b]/90 transition-colors" data-name="Button">
+    <button className="hidden bg-[#0f172b] h-[40px] relative rounded-[14px] shrink-0 w-full lg:w-[177.086px] hover:bg-[#0f172b]/90 transition-colors" data-name="Button">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full flex items-center justify-center pr-8 pl-4">
         <span className="font-bold leading-[20px] not-italic text-[14px] text-white tracking-tight">Check full report</span>
         <Icon4 />

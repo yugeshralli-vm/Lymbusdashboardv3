@@ -257,7 +257,7 @@ export const Benchmarking = () => {
         {[
           { icon: Target, title: 'Internal Benchmark', desc: '88th percentile in healthcare system', color: 'blue' },
           { icon: BarChart2, title: 'Response Stability', desc: 'Consistent 42% engagement rate', color: 'emerald' },
-          { icon: TrendingUp, title: 'Top Quartile', desc: 'High scores in follow-up metrics', color: 'purple' }
+          { icon: TrendingUp, title: 'Key Strength', desc: 'Consistently exceeding clinical excellence targets', color: 'purple' }
         ].map((item, i) => (
           <div key={i} className="bg-card p-4 rounded-[16px] border border-brand-border flex items-center gap-4 hover:border-brand-blue/30 transition-colors">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
