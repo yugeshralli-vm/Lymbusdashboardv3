@@ -409,140 +409,19 @@ export const LymbusModule = () => {
         </div>
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
-          <div className="max-w-3xl mx-auto space-y-6">
-            <AnimatePresence initial={false}>
-              {messages.map((m) => (
-                <Motion.div
-                  key={m.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {m.type === 'bot' ? (
-                    /* Bot message */
-                    <div className="flex gap-3">
-                      {/* Avatar */}
-                      <div className="w-8 h-8 rounded-full bg-background shadow-sm flex items-center justify-center shrink-0 mt-1">
-                        <Sparkles size={14} className="text-brand-blue" />
-                      </div>
+        <div
+          id="widget-container1"
+          className="flex-1 overflow-y-auto px-4 sm:px-8 py-6"
 
-                      <div className="flex-1 min-w-0">
-                        {/* Bubble */}
-                        <div className="bg-background border border-brand-border/50 rounded-bl-3xl rounded-br-3xl rounded-tr-3xl p-5">
-                          <p className="text-[14px] text-brand-dark leading-relaxed">
-                            {m.text}
-                          </p>
-                          {m.chart && m.chartLabel && (
-                            <MessageChart data={m.chart} label={m.chartLabel} />
-                          )}
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-3 mt-2 pl-2">
-                          <button
-                            onClick={() => handleCopy(m.text, m.id)}
-                            className="flex items-center gap-1.5 text-[10px] text-brand-gray/60 hover:text-brand-gray transition-colors"
-                            aria-label="Copy message"
-                          >
-                            {copiedId === m.id ? (
-                              <Check size={10} />
-                            ) : (
-                              <Copy size={10} />
-                            )}
-                            {copiedId === m.id ? 'Copied' : 'Copy'}
-                          </button>
-                          <button
-                            className="flex items-center gap-1.5 text-[10px] text-brand-gray/60 hover:text-brand-gray transition-colors"
-                            aria-label="Listen to message"
-                          >
-                            <Volume2 size={10} />
-                            Listen
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    /* User message */
-                    <div className="flex justify-end">
-                      <div className="bg-brand-blue text-white rounded-bl-3xl rounded-tl-3xl rounded-tr-3xl px-5 py-3 max-w-[80%]">
-                        <p className="text-[14px] leading-relaxed">{m.text}</p>
-                      </div>
-                    </div>
-                  )}
-                </Motion.div>
-              ))}
-            </AnimatePresence>
-
-            {/* Typing indicator */}
-            {isTyping && (
-              <Motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex gap-3"
-              >
-                <div className="w-8 h-8 rounded-full bg-background shadow-sm flex items-center justify-center shrink-0">
-                  <Sparkles size={14} className="text-brand-blue" />
-                </div>
-                <div className="bg-background border border-brand-border/50 rounded-bl-3xl rounded-br-3xl rounded-tr-3xl px-5 py-3 flex items-center gap-2">
-                  <Loader2 size={14} className="animate-spin text-brand-blue" />
-                  <span className="text-xs text-brand-gray">Analyzing data...</span>
-                </div>
-              </Motion.div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
+        >
+          <iframe
+            src="http://lymbus.ai/aidata/#/webchat/389ddf61-87eb-4db7-90fa-275a296c6af6"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            allow="clipboard-write"  style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+          ></iframe>
         </div>
 
-        {/* Suggestion chips + Input */}
-        <div className="border-t border-brand-border bg-card px-4 sm:px-8 py-4">
-          <div className="max-w-3xl mx-auto">
-            {/* Suggestion chips */}
-            {!isTyping && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {suggestionChips.map((chip) => (
-                  <button
-                    key={chip.label}
-                    onClick={() => handleSend(chip.label)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-card border border-brand-border shadow-sm text-[12px] text-brand-dark hover:border-brand-blue/30 hover:shadow-md transition-all"
-                    aria-label={chip.label}
-                  >
-                    <chip.icon size={14} className="text-brand-blue" />
-                    {chip.label}
-                    <ChevronRight size={10} className="text-brand-dark/40" />
-                  </button>
-                ))}
-              </div>
-            )}
 
-            {/* Input bar */}
-            <div className="relative flex items-center bg-background border border-brand-border rounded-2xl shadow-sm overflow-hidden">
-              <div className="pl-4 flex items-center">
-                <Sparkles size={16} className="text-brand-blue" />
-              </div>
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Compare wait times or analyze NPS trends..."
-                disabled={isTyping}
-                className="flex-1 bg-transparent py-3.5 px-3 text-[14px] text-brand-dark placeholder:text-brand-gray/50 focus:outline-none disabled:opacity-60"
-                aria-label="Message input for Lymbus AI"
-              />
-              <button
-                onClick={() => handleSend()}
-                disabled={!inputValue.trim() || isTyping}
-                className="mr-2 w-9 h-9 rounded-xl flex items-center justify-center text-brand-gray/40 hover:text-brand-blue disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                aria-label="Send message"
-              >
-                <Send size={18} />
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
