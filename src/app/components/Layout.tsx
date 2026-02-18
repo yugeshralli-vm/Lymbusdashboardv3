@@ -177,14 +177,14 @@ export const Layout: React.FC<LayoutProps> = ({ onLogout }) => {
               }}
               animate={headersHidden ? "hidden" : "visible"}
               transition={{ duration: 0.35, ease: "easeInOut" }}
-              className="lg:hidden p-4 bg-card border-b border-brand-border flex items-center justify-between fixed top-16 left-0 right-0 z-50"
+              className="hidden p-4 bg-card border-b border-brand-border flex items-center justify-between fixed top-16 left-0 right-0 z-50"
             >
               <h2 className="text-lg font-bold text-brand-dark">{getTitle()}</h2>
             </Motion.div>
           </>
         )}
         
-        <div className={`min-h-[calc(100vh-64px)] overflow-x-hidden relative ${(!selectedDept && !selectedLoc) ? 'lg:pt-16 pt-16' : ''}`}>
+        <div className={`min-h-[calc(100vh-64px)] overflow-x-hidden relative ${(!selectedDept && !selectedLoc) ? 'lg:pt-16 pt-8' : ''}`}>
           {renderContent()}
         </div>
       </main>

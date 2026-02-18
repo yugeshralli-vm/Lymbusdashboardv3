@@ -22,12 +22,16 @@ import {
   Eye,
   Layout,
   MessageSquare,
-  AlertTriangle
+  AlertTriangle,
+  ChevronDown
 } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/app/components/ui/utils';
 import { toast } from 'sonner';
 import { ConfirmationModal } from './ConfirmationModal';
+import { SqlEditor } from './SqlEditor';
+import { TimePicker } from './TimePicker';
+import { DatePicker } from './DatePicker';
 
 interface CampaignBuilderProps {
   onBack: () => void;
@@ -41,7 +45,7 @@ const forms = [
   { id: 'form-5', name: 'Medication Adherence', questions: 6 },
 ];
 
-type Step = 'audience' | 'content' | 'schedule' | 'review';
+type Step = 'audience' | 'metadata' | 'content' | 'schedule' | 'review';
 
 export const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onBack }) => {
   const [activeStep, setActiveStep] = useState<Step>('audience');
@@ -84,15 +88,23 @@ export const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onBack }) => {
     formId: 'form-1',
     scheduleType: 'now',
     interval: 'None',
+    intervalValue: '1',
+    intervalTime: '09:00',
+    weeklyDays: [] as string[],
+    monthlyType: 'date' as 'date' | 'relative',
+    monthlyDate: '15',
+    monthlyWeek: 'First',
+    monthlyDay: 'Monday',
     startDate: '2026-02-09',
     endDate: '2026-02-16'
   });
 
   const steps: { id: Step; label: string; icon: any }[] = [
     { id: 'audience', label: '1. Audience', icon: Target },
-    { id: 'content', label: '2. Content', icon: Layout },
-    { id: 'schedule', label: '3. Schedule', icon: Calendar },
-    { id: 'review', label: '4. Review', icon: Eye },
+    { id: 'metadata', label: '2. Metadata', icon: Database },
+    { id: 'content', label: '3. Content', icon: Layout },
+    { id: 'schedule', label: '4. Schedule', icon: Calendar },
+    { id: 'review', label: '5. Review', icon: Eye },
   ];
 
   const handleNext = () => {
@@ -130,12 +142,95 @@ export const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onBack }) => {
     }
   };
 
-  const [dbConfig, setDbConfig] = useState({ host: 'db.lymbus-health.internal', port: '5432', name: 'patient_records_prod', username: '', password: '' });
-  const [isTestingConnection, setIsTestingConnection] = useState(false);
-  const [dbConnected, setDbConnected] = useState(true);
+  // Database profile selection & query
+  const dbProfiles = [
+    { id: 1, name: 'Production — Patient Records', dbType: 'PostgreSQL', host: '192.168.10.45', port: '5432' },
+    { id: 2, name: 'Staging — Analytics Warehouse', dbType: 'MySQL', host: 'staging-analytics.internal.local', port: '3306' },
+    { id: 3, name: 'Development — Lab Results', dbType: 'MongoDB', host: '10.0.3.120', port: '27017' },
+    { id: 4, name: 'Reporting — Billing System', dbType: 'Microsoft SQL Server', host: 'billing-db.hospital.internal', port: '1433' },
+    { id: 5, name: 'Archive — Historical EMR', dbType: 'Oracle', host: '172.20.0.88', port: '1521' },
+  ];
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(1);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [sqlQuery, setSqlQuery] = useState("SELECT patient_id, first_name, last_name, phone, email\nFROM patients\nWHERE status = 'active'\nLIMIT 500;");
+  const [isVerifyingQuery, setIsVerifyingQuery] = useState(false);
+  const [queryVerified, setQueryVerified] = useState(false);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
   const [manualRecipients, setManualRecipients] = useState<{name: string, contact: string}[]>([]);
   const [newRecipient, setNewRecipient] = useState({ name: '', contact: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Mobile number state
+  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
+  const [selectedMobile, setSelectedMobile] = useState('');
+  const [allowDuplicates, setAllowDuplicates] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [mobileVerified, setMobileVerified] = useState(false);
+  const mobileDropdownRef = useRef<HTMLDivElement>(null);
+
+  const mobileNumbers = [
+    '+1 (555) 012-3456',
+    '+1 (555) 234-5678',
+    '+1 (555) 345-6789',
+    '+1 (555) 456-7890',
+    '+1 (555) 567-8901',
+  ];
+
+  React.useEffect(() => {
+    const handleMobileClickOutside = (e: MouseEvent) => {
+      if (mobileDropdownRef.current && !mobileDropdownRef.current.contains(e.target as Node)) {
+        setMobileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleMobileClickOutside);
+    return () => document.removeEventListener('mousedown', handleMobileClickOutside);
+  }, []);
+
+  // Metadata state
+  const [metadataRows, setMetadataRows] = useState<{ id: number; key: string; value: string; dynamic: string }[]>([
+    { id: 1, key: '', value: '', dynamic: '' }
+  ]);
+  const [nextRowId, setNextRowId] = useState(2);
+  const [openDropdownIdx, setOpenDropdownIdx] = useState<number | null>(null);
+  const dynamicDropdownRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dynamicDropdownRef.current && !dynamicDropdownRef.current.contains(e.target as Node)) {
+        setOpenDropdownIdx(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const dynamicDataOptions = [
+    'Patient ID',
+    'Visit Date',
+    'Provider Name',
+    'Department',
+    'Diagnosis Code',
+    'Insurance Type',
+  ];
+
+  const handleAddMetadataRow = () => {
+    setMetadataRows([...metadataRows, { id: nextRowId, key: '', value: '', dynamic: '' }]);
+    setNextRowId(nextRowId + 1);
+  };
+
+  const handleRemoveMetadataRow = (id: number) => {
+    if (metadataRows.length <= 1) return;
+    setMetadataRows(metadataRows.filter(r => r.id !== id));
+  };
+
+  const updateMetadataRow = (id: number, field: 'key' | 'value' | 'dynamic', val: string) => {
+    setMetadataRows(metadataRows.map(r => {
+      if (r.id !== id) return r;
+      if (field === 'value' && val) return { ...r, value: val, dynamic: '' };
+      if (field === 'dynamic' && val) return { ...r, dynamic: val, value: '' };
+      return { ...r, [field]: val };
+    }));
+  };
 
   const renderAudienceStep = () => (
     <div className="space-y-4 max-w-2xl mx-auto">
@@ -183,9 +278,9 @@ export const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onBack }) => {
         <h3 className="text-[9px] font-bold uppercase tracking-widest text-brand-gray mb-3 text-center">Select Data Source</h3>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { id: 'database', label: 'EHR DB', icon: Database },
+            { id: 'database', label: 'Database', icon: Database },
             { id: 'upload', label: 'Upload', icon: Upload },
-            { id: 'manual', label: 'Manual', icon: Plus }
+            { id: 'manual', label: 'Recipients', icon: Plus }
           ].map(source => (
             <button 
               key={source.id}
@@ -205,82 +300,94 @@ export const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onBack }) => {
         <div className="mt-4 pt-4 border-t border-brand-border">
           {data.source === 'database' && (
             <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-              <div className="grid grid-cols-12 gap-3">
-                <div className="col-span-8">
-                  <label className="text-[9px] font-bold uppercase tracking-widest text-brand-dark block mb-1 opacity-60">Host <span className="text-red-500">*</span></label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g., localhost or db.example.com" 
-                    className="w-full h-9 bg-brand-bg/30 border border-brand-border rounded-lg px-3 text-[10px] font-bold outline-none focus:ring-1 focus:ring-brand-blue/30" 
-                    value={dbConfig.host} 
-                    onChange={e => setDbConfig({...dbConfig, host: e.target.value})} 
-                  />
-                </div>
-                <div className="col-span-4">
-                  <label className="text-[9px] font-bold uppercase tracking-widest text-brand-dark block mb-1 opacity-60">Port</label>
-                  <input 
-                    type="text" 
-                    placeholder="5432" 
-                    className="w-full h-9 bg-brand-bg/30 border border-brand-border rounded-lg px-3 text-[10px] font-bold outline-none focus:ring-1 focus:ring-brand-blue/30" 
-                    value={dbConfig.port} 
-                    onChange={e => setDbConfig({...dbConfig, port: e.target.value})} 
-                  />
+              {/* Database Profile Dropdown */}
+              <div>
+                <label className="text-[9px] font-bold uppercase tracking-widest text-brand-dark block mb-1 opacity-60">Database Profile <span className="text-red-500">*</span></label>
+                <div className="relative" ref={profileDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                    className={cn(
+                      "w-full h-9 bg-brand-bg/30 border border-brand-border rounded-lg px-3 text-left text-[10px] font-bold outline-none flex items-center justify-between transition-all",
+                      profileDropdownOpen ? "ring-1 ring-brand-blue/30 border-brand-blue/30" : "hover:border-brand-blue/20"
+                    )}
+                  >
+                    <span className={selectedProfileId ? "text-brand-dark" : "text-brand-gray"}>
+                      {selectedProfileId ? dbProfiles.find(p => p.id === selectedProfileId)?.name : 'Select a database profile'}
+                    </span>
+                    <ChevronDown size={12} className={cn("text-brand-gray transition-transform", profileDropdownOpen && "rotate-180")} />
+                  </button>
+                  <AnimatePresence>
+                    {profileDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-[10]" onClick={() => setProfileDropdownOpen(false)} />
+                        <Motion.div
+                          initial={{ opacity: 0, y: 4, scale: 0.97 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 4, scale: 0.97 }}
+                          transition={{ duration: 0.12 }}
+                          className="absolute left-0 top-full mt-1 w-full bg-white rounded-xl shadow-xl border border-brand-border z-[20] p-1 max-h-48 overflow-y-auto"
+                        >
+                          {dbProfiles.map((profile) => (
+                            <button
+                              key={profile.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedProfileId(profile.id);
+                                setProfileDropdownOpen(false);
+                                setQueryVerified(false);
+                              }}
+                              className={cn(
+                                "w-full flex flex-col px-3 py-2 rounded-lg text-left transition-colors",
+                                selectedProfileId === profile.id ? "bg-brand-bg text-brand-blue" : "hover:bg-brand-bg/50 text-brand-dark"
+                              )}
+                            >
+                              <span className="text-[10px] font-bold">{profile.name}</span>
+                              <span className="text-[9px] font-medium text-brand-gray">{profile.dbType} · {profile.host}:{profile.port}</span>
+                            </button>
+                          ))}
+                        </Motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 
+              {/* SQL Query */}
               <div>
-                <label className="text-[9px] font-bold uppercase tracking-widest text-brand-dark block mb-1 opacity-60">Database Name <span className="text-red-500">*</span></label>
-                <input 
-                  type="text" 
-                  placeholder="Enter database name" 
-                  className="w-full h-9 bg-brand-bg/30 border border-brand-border rounded-lg px-3 text-[10px] font-bold outline-none focus:ring-1 focus:ring-brand-blue/30" 
-                  value={dbConfig.name} 
-                  onChange={e => setDbConfig({...dbConfig, name: e.target.value})} 
+                <label className="text-[9px] font-bold uppercase tracking-widest text-brand-dark block mb-1 opacity-60">SQL Query <span className="text-red-500">*</span></label>
+                <SqlEditor
+                  value={sqlQuery}
+                  onChange={(val) => { setSqlQuery(val); setQueryVerified(false); }}
+                  placeholder="SELECT patient_id, first_name, last_name, phone, email FROM patients WHERE ..."
+                  minHeight="90px"
+                  maxHeight="180px"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[9px] font-bold uppercase tracking-widest text-brand-dark block mb-1 opacity-60">Username <span className="text-red-500">*</span></label>
-                  <input 
-                    type="text" 
-                    placeholder="Database username" 
-                    className="w-full h-9 bg-brand-bg/30 border border-brand-border rounded-lg px-3 text-[10px] font-bold outline-none focus:ring-1 focus:ring-brand-blue/30" 
-                    value={dbConfig.username} 
-                    onChange={e => setDbConfig({...dbConfig, username: e.target.value})} 
-                  />
-                </div>
-                <div>
-                  <label className="text-[9px] font-bold uppercase tracking-widest text-brand-dark block mb-1 opacity-60">Password</label>
-                  <input 
-                    type="password" 
-                    placeholder="Database password" 
-                    className="w-full h-9 bg-brand-bg/30 border border-brand-border rounded-lg px-3 text-[10px] font-bold outline-none focus:ring-1 focus:ring-brand-blue/30" 
-                    value={dbConfig.password} 
-                    onChange={e => setDbConfig({...dbConfig, password: e.target.value})} 
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 pt-2">
-                <button 
-                  onClick={() => { 
-                    setIsTestingConnection(true); 
-                    setTimeout(() => { 
-                      setIsTestingConnection(false); 
-                      setDbConnected(true); 
-                      toast.success('Connection Successful'); 
-                    }, 1200); 
+              {/* Verify Query */}
+              <div className="flex items-center gap-4 pt-1">
+                <button
+                  onClick={() => {
+                    if (!selectedProfileId) { toast.error('Select a database profile first'); return; }
+                    if (!sqlQuery.trim()) { toast.error('Enter a SQL query first'); return; }
+                    setIsVerifyingQuery(true);
+                    setQueryVerified(false);
+                    setTimeout(() => {
+                      setIsVerifyingQuery(false);
+                      setQueryVerified(true);
+                      toast.success('Query verified — 5,590 records matched');
+                    }, 1500);
                   }}
-                  className="px-6 py-2 bg-brand-blue text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-md shadow-brand-blue/10 active:scale-95 transition-all"
-                  disabled={isTestingConnection}
+                  className="px-6 py-2 bg-brand-blue text-white rounded-[12px] text-[10px] font-bold uppercase tracking-widest shadow-md shadow-brand-blue/10 hover:bg-[#2d3ed4] active:scale-95 transition-all disabled:opacity-60"
+                  disabled={isVerifyingQuery}
                 >
-                  {isTestingConnection ? 'Testing...' : 'Test Connection'}
+                  {isVerifyingQuery ? 'Verifying...' : 'Verify Query'}
                 </button>
-                {dbConnected && (
+                {queryVerified && (
                   <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
                     <CheckCircle2 size={14} className="text-emerald-500" />
-                    <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-tight">5,590 Records Verified</span>
+                    <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-tight">5,590 Records Matched</span>
                   </div>
                 )}
               </div>
@@ -300,27 +407,51 @@ export const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onBack }) => {
 
           {data.source === 'manual' && (
             <div className="space-y-4">
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  placeholder="PATIENT NAME" 
-                  className="flex-1 h-10 bg-brand-bg/40 border border-brand-border rounded-xl px-4 text-[10px] font-bold focus:ring-1 focus:ring-brand-blue/30 outline-none" 
-                  value={newRecipient.name} 
-                  onChange={e => setNewRecipient({...newRecipient, name: e.target.value})} 
-                />
-                <input 
-                  type="text" 
-                  placeholder="CONTACT (SMS/EMAIL)" 
-                  className="flex-1 h-10 bg-brand-bg/40 border border-brand-border rounded-xl px-4 text-[10px] font-bold focus:ring-1 focus:ring-brand-blue/30 outline-none" 
-                  value={newRecipient.contact} 
-                  onChange={e => setNewRecipient({...newRecipient, contact: e.target.value})} 
-                />
-                <button 
-                  onClick={() => { if (newRecipient.name && newRecipient.contact) { setManualRecipients([...manualRecipients, newRecipient]); setNewRecipient({ name: '', contact: '' }); } }} 
-                  className="px-6 bg-brand-blue text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-md shadow-brand-blue/10 active:scale-95 transition-all"
-                >
-                  Add
-                </button>
+              <div className="space-y-3">
+                {data.channels.includes('sms') && (
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-widest text-brand-dark block mb-1.5 opacity-60 flex items-center gap-1.5">
+                      <Smartphone size={10} className="text-brand-blue" />
+                      SMS Numbers
+                    </label>
+                    <textarea
+                      placeholder="Enter phone numbers separated by commas"
+                      className="w-full min-h-[90px] bg-brand-bg/40 border border-brand-border rounded-xl px-4 py-3 text-[10px] font-bold focus:ring-1 focus:ring-brand-blue/30 outline-none resize-y"
+                      value={newRecipient.name}
+                      onChange={e => setNewRecipient({...newRecipient, name: e.target.value})}
+                    />
+                    <p className="text-[9px] text-brand-gray mt-1.5 opacity-50">
+                      e.g. +1 555-012-3456, +1 555-234-5678, +1 555-345-6789
+                    </p>
+                    {newRecipient.name.trim() && (
+                      <p className="text-[9px] font-bold text-brand-gray mt-1 opacity-60">
+                        {newRecipient.name.split(',').filter(s => s.trim()).length} number{newRecipient.name.split(',').filter(s => s.trim()).length !== 1 ? 's' : ''} entered
+                      </p>
+                    )}
+                  </div>
+                )}
+                {data.channels.includes('email') && (
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-widest text-brand-dark block mb-1.5 opacity-60 flex items-center gap-1.5">
+                      <Mail size={10} className="text-brand-blue" />
+                      Email Addresses
+                    </label>
+                    <textarea
+                      placeholder="Enter email addresses separated by commas"
+                      className="w-full min-h-[90px] bg-brand-bg/40 border border-brand-border rounded-xl px-4 py-3 text-[10px] font-bold focus:ring-1 focus:ring-brand-blue/30 outline-none resize-y"
+                      value={newRecipient.contact}
+                      onChange={e => setNewRecipient({...newRecipient, contact: e.target.value})}
+                    />
+                    <p className="text-[9px] text-brand-gray mt-1.5 opacity-50">
+                      e.g. john@example.com, jane@example.com, alex@example.com
+                    </p>
+                    {newRecipient.contact.trim() && (
+                      <p className="text-[9px] font-bold text-brand-gray mt-1 opacity-60">
+                        {newRecipient.contact.split(',').filter(s => s.trim()).length} address{newRecipient.contact.split(',').filter(s => s.trim()).length !== 1 ? 'es' : ''} entered
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
               {manualRecipients.length > 0 && (
                 <div className="border border-brand-border rounded-2xl overflow-hidden bg-white max-h-[320px] overflow-y-auto custom-scrollbar shadow-inner">
@@ -352,6 +483,211 @@ export const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onBack }) => {
               )}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Mobile Number Section - only for DB and Upload */}
+      {(data.source === 'database' || data.source === 'upload') && (
+      <div className="bg-white p-5 rounded-2xl border border-brand-border shadow-sm">
+        <div className="flex items-end justify-between gap-6">
+          <div className="flex items-end gap-6 flex-1">
+            {/* Mobile Number Dropdown */}
+            <div className="flex flex-col gap-2 w-[260px]" ref={mobileDropdownRef}>
+              <label className="text-[9px] font-bold uppercase tracking-widest text-[#848ab4]">Mobile Number</label>
+              <div className="relative">
+                <button
+                  onClick={() => setMobileDropdownOpen(!mobileDropdownOpen)}
+                  className="w-full h-11 bg-white border border-[#eee] rounded-2xl px-3 flex items-center justify-between text-xs font-medium text-[#6a7282] hover:border-brand-blue/30 transition-colors"
+                >
+                  <span className={selectedMobile ? 'text-brand-dark' : 'text-[#6a7282]'}>
+                    {selectedMobile || 'Select mobile number'}
+                  </span>
+                  <div className={cn(
+                    "bg-white rounded-2xl size-6 flex items-center justify-center transition-transform",
+                    mobileDropdownOpen && "rotate-180"
+                  )}>
+                    <ChevronDown size={14} className="text-[#6a7282]" />
+                  </div>
+                </button>
+                {mobileDropdownOpen && (
+                  <div className="absolute z-20 top-full mt-1 w-full bg-white border border-[#eee] rounded-2xl shadow-lg overflow-hidden">
+                    {mobileNumbers.map((num) => (
+                      <button
+                        key={num}
+                        onClick={() => {
+                          setSelectedMobile(num);
+                          setMobileDropdownOpen(false);
+                          setMobileVerified(false);
+                        }}
+                        className={cn(
+                          "w-full px-3 py-2.5 text-left text-xs font-medium hover:bg-brand-bg/40 transition-colors",
+                          selectedMobile === num ? "bg-brand-blue/5 text-brand-blue" : "text-brand-dark"
+                        )}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Allow Duplicates Toggle */}
+            <div className="flex items-center gap-2 h-11">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-[#6a7282]">Allow Duplicates</span>
+              <button
+                onClick={() => setAllowDuplicates(!allowDuplicates)}
+                className={cn(
+                  "relative w-8 h-5 rounded-full transition-colors flex items-center px-0.5 shrink-0",
+                  allowDuplicates ? "bg-brand-blue" : "bg-[#eee]"
+                )}
+                role="switch"
+                aria-checked={allowDuplicates}
+              >
+                <div className={cn(
+                  "size-4 bg-white rounded-full shadow-sm transition-transform",
+                  allowDuplicates ? "translate-x-3" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+          </div>
+
+          {/* Verify Button */}
+          <button
+            onClick={() => {
+              if (!selectedMobile) {
+                toast.error('Please select a mobile number first');
+                return;
+              }
+              setIsVerifying(true);
+              setTimeout(() => {
+                setIsVerifying(false);
+                setMobileVerified(true);
+                toast.success('Mobile number verified successfully');
+              }, 1200);
+            }}
+            disabled={isVerifying}
+            className="px-6 py-2 bg-brand-blue text-white rounded-[12px] text-[10px] font-bold uppercase tracking-widest shadow-md shadow-brand-blue/10 hover:bg-[#2d3ed4] active:scale-95 transition-all disabled:opacity-60 shrink-0"
+          >
+            {isVerifying ? 'Verifying...' : mobileVerified ? 'Verified ✓' : 'Verify'}
+          </button>
+        </div>
+      </div>
+      )}
+    </div>
+  );
+
+  const renderMetadataStep = () => (
+    <div className="space-y-6 max-w-2xl mx-auto">
+      {/* Metadata Database Entry Card */}
+      <div className="bg-white rounded-2xl border border-brand-border shadow-sm">
+        <div className="px-6 py-4 bg-brand-bg/20 border-b border-brand-border rounded-t-2xl flex items-center gap-2">
+          <Database size={16} className="text-brand-blue" />
+          <span className="text-[10px] font-bold uppercase tracking-widest">Metadata Database Entry</span>
+          <span className="text-[9px] font-bold text-brand-gray uppercase tracking-widest ml-1">(Optional)</span>
+        </div>
+        <div className="p-6 space-y-2">
+          {/* Column Headers */}
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <label className="text-[9px] font-bold uppercase tracking-widest text-brand-dark opacity-60">Static Key</label>
+            </div>
+            <div className="flex-1">
+              <label className="text-[9px] font-bold uppercase tracking-widest text-brand-dark opacity-60">Static Value</label>
+            </div>
+            <div className="w-8 shrink-0" />
+            <div className="flex-1">
+              <label className="text-[9px] font-bold uppercase tracking-widest text-brand-dark opacity-60">Dynamic Data</label>
+            </div>
+            {metadataRows.length > 1 && <div className="w-10 shrink-0" />}
+          </div>
+
+          {/* Input Rows */}
+          <div className="space-y-2">
+            {metadataRows.map((row) => (
+              <div key={row.id} className="flex items-center gap-3 group">
+                <div className="flex-1">
+                  <input 
+                    type="text" 
+                    placeholder="Enter Key" 
+                    className="w-full h-10 bg-brand-bg/30 border border-brand-border rounded-xl px-4 text-[11px] font-bold outline-none focus:ring-1 focus:ring-brand-blue/30 placeholder:text-brand-gray/50" 
+                    value={row.key}
+                    onChange={e => updateMetadataRow(row.id, 'key', e.target.value)}
+                  />
+                </div>
+                <div className="flex-1">
+                  <input 
+                    type="text" 
+                    placeholder="Enter Value" 
+                    className="w-full h-10 bg-brand-bg/30 border border-brand-border rounded-xl px-4 text-[11px] font-bold outline-none focus:ring-1 focus:ring-brand-blue/30 placeholder:text-brand-gray/50" 
+                    value={row.value}
+                    onChange={e => updateMetadataRow(row.id, 'value', e.target.value)}
+                  />
+                </div>
+                <span className="text-[9px] font-bold text-brand-gray uppercase tracking-widest w-8 text-center shrink-0">OR</span>
+                <div className="flex-1 relative" ref={openDropdownIdx === row.id ? dynamicDropdownRef : undefined}>
+                  <button
+                    onClick={() => setOpenDropdownIdx(openDropdownIdx === row.id ? null : row.id)}
+                    className={cn(
+                      "w-full h-10 bg-brand-bg/30 border border-brand-border rounded-xl px-4 text-[11px] font-bold outline-none flex items-center justify-between transition-all",
+                      row.dynamic ? "text-brand-dark" : "text-brand-gray/50",
+                      openDropdownIdx === row.id && "ring-1 ring-brand-blue/30"
+                    )}
+                  >
+                    <span>{row.dynamic || 'Select data'}</span>
+                    <ChevronDown size={14} className={cn("text-brand-gray transition-transform", openDropdownIdx === row.id && "rotate-180")} />
+                  </button>
+                  <AnimatePresence>
+                    {openDropdownIdx === row.id && (
+                      <Motion.div
+                        initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute left-0 right-0 top-full mt-1 bg-white border border-brand-border rounded-xl shadow-lg overflow-hidden z-50"
+                      >
+                        {dynamicDataOptions.map(option => (
+                          <button
+                            key={option}
+                            className={cn(
+                              "w-full px-4 py-2.5 text-[11px] font-bold text-left transition-colors",
+                              row.dynamic === option ? "bg-brand-blue/5 text-brand-blue" : "text-brand-dark hover:bg-brand-bg"
+                            )}
+                            onClick={() => {
+                              updateMetadataRow(row.id, 'dynamic', option);
+                              setOpenDropdownIdx(null);
+                            }}
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </Motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                {metadataRows.length > 1 && (
+                  <button 
+                    onClick={() => handleRemoveMetadataRow(row.id)}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl text-brand-gray/40 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
+                    aria-label="Remove row"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Add Row Button */}
+          <div className="pt-2">
+            <button 
+              onClick={handleAddMetadataRow}
+              className="h-10 px-5 bg-brand-blue text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-md shadow-brand-blue/10 active:scale-95 transition-all flex items-center gap-1.5"
+            >
+              <Plus size={14} />
+              Add
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -502,52 +838,324 @@ export const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onBack }) => {
       </div>
 
       <AnimatePresence mode="wait">
-        {data.scheduleType !== 'now' && (
-          <Motion.div 
+        {data.scheduleType === 'schedule' && (
+          <Motion.div
+            key="schedule-fields"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             className="bg-brand-bg/30 p-8 rounded-2xl border border-brand-border space-y-6"
           >
-             <div className="grid grid-cols-2 gap-8">
-               {data.scheduleType !== 'range' && (
-                 <div className="space-y-2">
-                   <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Recurrence</label>
-                   <select 
-                     className="w-full h-11 bg-white border border-brand-border rounded-xl px-4 text-xs font-bold focus:ring-1 focus:ring-brand-blue/30 outline-none"
-                     value={data.interval}
-                     onChange={e => setData({...data, interval: e.target.value})}
-                   >
-                      <option value="None">None (One-time)</option>
-                      <option value="Daily">Daily</option>
-                      <option value="Weekly">Weekly</option>
-                      <option value="Monthly">Monthly</option>
-                   </select>
-                 </div>
-               )}
-               <div className={cn("space-y-2", data.scheduleType === 'range' ? "col-span-1" : "")}>
-                 <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">
-                   {data.scheduleType === 'range' ? 'Start Date' : 'Launch Date'}
-                 </label>
-                 <input 
-                   type="date" 
-                   className="w-full h-11 bg-white border border-brand-border rounded-xl px-4 text-xs font-bold focus:ring-1 focus:ring-brand-blue/30 outline-none" 
-                   value={data.startDate} 
-                   onChange={e => setData({...data, startDate: e.target.value})} 
-                 />
-               </div>
-               {data.scheduleType === 'range' && (
-                 <div className="space-y-2">
-                   <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">End Date</label>
-                   <input 
-                     type="date" 
-                     className="w-full h-11 bg-white border border-brand-border rounded-xl px-4 text-xs font-bold focus:ring-1 focus:ring-brand-blue/30 outline-none" 
-                     value={data.endDate} 
-                     onChange={e => setData({...data, endDate: e.target.value})} 
-                   />
-                 </div>
-               )}
-             </div>
+            <div className="grid grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Start Date</label>
+                <DatePicker
+                  value={data.startDate}
+                  onChange={val => setData({...data, startDate: val})}
+                  placeholder="Select start date"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">End Date</label>
+                <DatePicker
+                  value={data.endDate}
+                  onChange={val => setData({...data, endDate: val})}
+                  placeholder="Select end date"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Custom Interval</label>
+              <div className="relative">
+                <select
+                  className="w-full h-11 bg-white border border-brand-border rounded-xl pl-4 pr-10 text-xs font-bold focus:ring-1 focus:ring-brand-blue/30 outline-none appearance-none"
+                  value={data.interval}
+                  onChange={e => setData({...data, interval: e.target.value, intervalValue: '1'})}
+                >
+                  <option value="Minutes">Minutes</option>
+                  <option value="Hours">Hours</option>
+                  <option value="Daily">Daily</option>
+                  <option value="Weekly">Weekly</option>
+                  <option value="Monthly">Monthly</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-gray pointer-events-none" />
+              </div>
+            </div>
+
+            <AnimatePresence mode="wait">
+              {data.interval === 'Minutes' && (
+                <Motion.div
+                  key="minutes-picker"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="space-y-2"
+                >
+                  <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Every (Minute)</label>
+                  <div className="relative">
+                    <select
+                      className="w-full h-11 bg-white border border-brand-border rounded-xl pl-4 pr-10 text-xs font-bold focus:ring-1 focus:ring-brand-blue/30 outline-none appearance-none"
+                      value={data.intervalValue}
+                      onChange={e => setData({...data, intervalValue: e.target.value})}
+                    >
+                      {Array.from({ length: 60 }, (_, i) => i + 1).map(m => (
+                        <option key={m} value={String(m)}>
+                          {m} {m === 1 ? 'minute' : 'minutes'}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-gray pointer-events-none" />
+                  </div>
+                </Motion.div>
+              )}
+
+              {data.interval === 'Hours' && (
+                <Motion.div
+                  key="hours-picker"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="space-y-2"
+                >
+                  <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Every (Hour)</label>
+                  <div className="relative">
+                    <select
+                      className="w-full h-11 bg-white border border-brand-border rounded-xl pl-4 pr-10 text-xs font-bold focus:ring-1 focus:ring-brand-blue/30 outline-none appearance-none"
+                      value={data.intervalValue}
+                      onChange={e => setData({...data, intervalValue: e.target.value})}
+                    >
+                      {Array.from({ length: 24 }, (_, i) => i + 1).map(h => (
+                        <option key={h} value={String(h)}>
+                          {h} {h === 1 ? 'hour' : 'hours'}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-gray pointer-events-none" />
+                  </div>
+                </Motion.div>
+              )}
+
+              {data.interval === 'Daily' && (
+                <Motion.div
+                  key="daily-picker"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="space-y-2"
+                >
+                  <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Time of Day</label>
+                  <TimePicker
+                    value={data.intervalTime}
+                    onChange={val => setData({...data, intervalTime: val})}
+                  />
+                </Motion.div>
+              )}
+
+              {data.interval === 'Weekly' && (
+                <Motion.div
+                  key="weekly-picker"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="space-y-4"
+                >
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Day(s) of Week</label>
+                    <div className="flex items-center gap-2">
+                      {[
+                        { key: 'Sun', label: 'S' },
+                        { key: 'Mon', label: 'M' },
+                        { key: 'Tue', label: 'T' },
+                        { key: 'Wed', label: 'W' },
+                        { key: 'Thu', label: 'T' },
+                        { key: 'Fri', label: 'F' },
+                        { key: 'Sat', label: 'S' }
+                      ].map(day => {
+                        const isSelected = data.weeklyDays.includes(day.key);
+                        return (
+                          <button
+                            key={day.key}
+                            type="button"
+                            onClick={() => {
+                              const next = isSelected
+                                ? data.weeklyDays.filter((d: string) => d !== day.key)
+                                : [...data.weeklyDays, day.key];
+                              setData({ ...data, weeklyDays: next });
+                            }}
+                            className={cn(
+                              "w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 border-2",
+                              isSelected
+                                ? "bg-brand-blue text-primary-foreground border-brand-blue shadow-md shadow-brand-blue/15 scale-110"
+                                : "bg-brand-bg text-brand-gray border-brand-border hover:border-brand-blue/30 hover:text-brand-dark"
+                            )}
+                            aria-label={day.key}
+                            aria-pressed={isSelected}
+                          >
+                            {day.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="space-y-2 max-w-[200px]">
+                    <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Time of Day</label>
+                    <TimePicker
+                      value={data.intervalTime}
+                      onChange={val => setData({...data, intervalTime: val})}
+                    />
+                  </div>
+                </Motion.div>
+              )}
+
+              {data.interval === 'Monthly' && (
+                <Motion.div
+                  key="monthly-picker"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="space-y-4"
+                >
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Repeat On</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { id: 'date' as const, label: 'Specific Date', desc: 'e.g. 15th of every month' },
+                        { id: 'relative' as const, label: 'Relative Day', desc: 'e.g. First Monday of every month' }
+                      ].map(opt => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setData({ ...data, monthlyType: opt.id })}
+                          className={cn(
+                            "p-4 rounded-xl border-2 text-left transition-all",
+                            data.monthlyType === opt.id
+                              ? "border-brand-blue bg-brand-blue/5 shadow-sm"
+                              : "border-brand-border bg-white hover:border-brand-blue/20"
+                          )}
+                        >
+                          <p className={cn(
+                            "text-[10px] font-bold uppercase tracking-[0.15em]",
+                            data.monthlyType === opt.id ? "text-brand-blue" : "text-brand-dark"
+                          )}>{opt.label}</p>
+                          <p className="text-[8px] font-bold text-brand-gray uppercase tracking-widest mt-1">{opt.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <AnimatePresence mode="wait">
+                    {data.monthlyType === 'date' && (
+                      <Motion.div
+                        key="monthly-date"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 6 }}
+                        className="space-y-2 max-w-[200px]"
+                      >
+                        <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Day of Month</label>
+                        <div className="relative">
+                          <select
+                            className="w-full h-11 bg-white border border-brand-border rounded-xl pl-4 pr-10 text-xs font-bold focus:ring-1 focus:ring-brand-blue/30 outline-none appearance-none"
+                            value={data.monthlyDate}
+                            onChange={e => setData({...data, monthlyDate: e.target.value})}
+                          >
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => {
+                              const suffix = d === 1 || d === 21 || d === 31 ? 'st' : d === 2 || d === 22 ? 'nd' : d === 3 || d === 23 ? 'rd' : 'th';
+                              return (
+                                <option key={d} value={String(d)}>
+                                  {d}{suffix} of every month
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-gray pointer-events-none" />
+                        </div>
+                      </Motion.div>
+                    )}
+                    {data.monthlyType === 'relative' && (
+                      <Motion.div
+                        key="monthly-relative"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 6 }}
+                        className="space-y-4"
+                      >
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Week</label>
+                            <div className="relative">
+                              <select
+                                className="w-full h-11 bg-white border border-brand-border rounded-xl pl-4 pr-10 text-xs font-bold focus:ring-1 focus:ring-brand-blue/30 outline-none appearance-none"
+                                value={data.monthlyWeek}
+                                onChange={e => setData({...data, monthlyWeek: e.target.value})}
+                              >
+                                {['First', 'Second', 'Third', 'Fourth', 'Last'].map(w => (
+                                  <option key={w} value={w}>{w}</option>
+                                ))}
+                              </select>
+                              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-gray pointer-events-none" />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Day</label>
+                            <div className="relative">
+                              <select
+                                className="w-full h-11 bg-white border border-brand-border rounded-xl pl-4 pr-10 text-xs font-bold focus:ring-1 focus:ring-brand-blue/30 outline-none appearance-none"
+                                value={data.monthlyDay}
+                                onChange={e => setData({...data, monthlyDay: e.target.value})}
+                              >
+                                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
+                                  <option key={d} value={d}>{d}</option>
+                                ))}
+                              </select>
+                              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-gray pointer-events-none" />
+                            </div>
+                          </div>
+                        </div>
+                      </Motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <div className="space-y-2 max-w-[200px]">
+                    <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Time of Day</label>
+                    <TimePicker
+                      value={data.intervalTime}
+                      onChange={val => setData({...data, intervalTime: val})}
+                    />
+                  </div>
+                </Motion.div>
+              )}
+            </AnimatePresence>
+          </Motion.div>
+        )}
+
+        {data.scheduleType === 'range' && (
+          <Motion.div
+            key="range-fields"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="bg-brand-bg/30 p-8 rounded-2xl border border-brand-border space-y-6"
+          >
+            <div className="grid grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">Start Date</label>
+                <DatePicker
+                  value={data.startDate}
+                  onChange={val => setData({...data, startDate: val})}
+                  placeholder="Select start date"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gray block opacity-60">End Date</label>
+                <DatePicker
+                  value={data.endDate}
+                  onChange={val => setData({...data, endDate: val})}
+                  placeholder="Select end date"
+                />
+              </div>
+            </div>
           </Motion.div>
         )}
       </AnimatePresence>
@@ -719,6 +1327,12 @@ export const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onBack }) => {
                            "text-[10px] font-bold uppercase tracking-widest transition-colors leading-tight",
                            isActive ? "text-brand-blue" : "text-brand-gray"
                          )}>{s.label}</p>
+                         {s.id === 'metadata' && (
+                           <p className={cn(
+                             "text-[8px] font-bold uppercase tracking-widest mt-0.5",
+                             isActive ? "text-brand-blue/60" : "text-brand-gray/50"
+                           )}>(Optional)</p>
+                         )}
                       </div>
                       {isActive && (
                         <Motion.div 
@@ -743,6 +1357,7 @@ export const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onBack }) => {
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                   >
                     {activeStep === 'audience' && renderAudienceStep()}
+                    {activeStep === 'metadata' && renderMetadataStep()}
                     {activeStep === 'content' && renderContentStep()}
                     {activeStep === 'schedule' && renderScheduleStep()}
                     {activeStep === 'review' && renderReviewStep()}
@@ -771,14 +1386,21 @@ export const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onBack }) => {
                  <div className="hidden sm:flex flex-col items-end">
                     <p className="text-[10px] font-bold text-brand-dark uppercase tracking-widest">
                       {activeStep === 'audience' ? 'Step 1: Audience' : 
-                       activeStep === 'content' ? 'Step 2: Content' : 
-                       activeStep === 'schedule' ? 'Step 3: Schedule' : 'Step 4: Review'}
+                       activeStep === 'metadata' ? 'Step 2: Metadata' :
+                       activeStep === 'content' ? 'Step 3: Content' : 
+                       activeStep === 'schedule' ? 'Step 4: Schedule' : 'Step 5: Review'}
                     </p>
                     <p className="text-[8px] font-bold text-brand-gray uppercase tracking-widest">Autosaved at 9:41 AM</p>
                  </div>
                  <button 
                     onClick={handleNext}
-                    className="px-10 py-3 bg-brand-blue text-white rounded-xl font-bold text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-brand-blue/20 hover:bg-brand-blue/90 hover:-translate-y-0.5 transition-all flex items-center gap-3"
+                    disabled={activeStep === 'audience' && !data.name.trim()}
+                    className={cn(
+                      "px-10 py-3 rounded-xl font-bold text-[11px] uppercase tracking-[0.2em] shadow-xl flex items-center gap-3 transition-all",
+                      activeStep === 'audience' && !data.name.trim()
+                        ? "bg-brand-blue/40 text-white/60 cursor-not-allowed shadow-none"
+                        : "bg-brand-blue text-white shadow-brand-blue/20 hover:bg-brand-blue/90 hover:-translate-y-0.5"
+                    )}
                   >
                     {activeStep === 'review' ? 'Launch Campaign' : (activeStep === 'schedule' ? 'Review' : 'Next Step')}
                     <ChevronRight size={16} />

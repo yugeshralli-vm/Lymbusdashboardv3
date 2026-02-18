@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/app/components/ui/utils";
 import { ConfirmationModal } from "./ConfirmationModal";
+import { useFocusTrap } from './useFocusTrap';
 
 interface FacilityOverlayProps {
   isOpen: boolean;
@@ -34,6 +35,8 @@ export const FacilityOverlay = ({ isOpen, onClose, facility }: FacilityOverlayPr
     { id: 2, key: 'message', value: '{{message_body}}' },
   ]);
   const [nextParamId, setNextParamId] = useState(3);
+
+  const { containerRef } = useFocusTrap({ isOpen, onClose });
 
   if (!isOpen || !facility) return null;
 
@@ -75,13 +78,14 @@ export const FacilityOverlay = ({ isOpen, onClose, facility }: FacilityOverlayPr
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <Motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <Motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          aria-hidden="true"
         />
         
         <Motion.div
@@ -89,6 +93,10 @@ export const FacilityOverlay = ({ isOpen, onClose, facility }: FacilityOverlayPr
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="relative bg-card w-full max-w-[800px] max-h-[90vh] rounded-[24px] border border-brand-border shadow-2xl overflow-hidden flex flex-col"
+          ref={containerRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${facility.name} settings`}
         >
           {/* Header */}
           <div className="p-6 border-b border-brand-border flex items-start justify-between shrink-0">
@@ -106,6 +114,7 @@ export const FacilityOverlay = ({ isOpen, onClose, facility }: FacilityOverlayPr
             <button 
               onClick={onClose}
               className="p-2 hover:bg-brand-bg rounded-full transition-colors text-brand-gray"
+              aria-label="Close facility settings"
             >
               <X size={20} />
             </button>
@@ -280,6 +289,9 @@ export const FacilityOverlay = ({ isOpen, onClose, facility }: FacilityOverlayPr
                                     "w-12 h-6 rounded-full p-1 transition-all relative flex items-center",
                                     isConnected ? "bg-brand-blue shadow-[0_0_10px_rgba(54,73,233,0.3)]" : "bg-gray-200"
                                   )}
+                                  role="switch"
+                                  aria-checked={isConnected}
+                                  aria-label={`Toggle ${int.label} ${isConnected ? 'off' : 'on'}`}
                                 >
                                   <div className={cn(
                                     "w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200",
@@ -503,7 +515,7 @@ export const FacilityOverlay = ({ isOpen, onClose, facility }: FacilityOverlayPr
           confirmLabel="Archive"
           variant="danger"
         />
-      </div>
+      </Motion.div>
     </AnimatePresence>
   );
 };

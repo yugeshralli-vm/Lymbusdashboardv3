@@ -31,7 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
     { id: 'lymbus', label: 'Lymbus AI', icon: Sparkles, className: 'nav-lymbus' },
     { id: 'root-cause', label: 'Root Cause', icon: Search, className: 'nav-root-cause' },
     { id: 'benchmarking', label: 'Benchmarking', icon: BarChart3, className: 'nav-benchmarking' },
-    { id: 'engagement', label: 'Engagement', icon: MessageSquare, className: 'nav-engagement' },
+    { id: 'engagement', label: 'Engagement', icon: MessageSquare, className: 'nav-engagement', mobileHidden: true },
     { id: 'escalation', label: 'Escalation', icon: AlertTriangle, className: 'nav-escalation' },
     { id: 'reports', label: 'Reports', icon: FileText, className: 'nav-reports' },
   ];
@@ -65,7 +65,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
               item.className,
               activeTab === item.id 
                 ? "bg-brand-blue text-white shadow-lg shadow-brand-blue/20" 
-                : "text-brand-gray hover:bg-brand-bg hover:text-brand-dark"
+                : "text-brand-gray hover:bg-brand-bg hover:text-brand-dark",
+              item.mobileHidden && "hidden lg:flex"
             )}
             style={activeTab === item.id ? { backgroundColor: 'var(--item-color, var(--brand-blue))' } : {}}
           >

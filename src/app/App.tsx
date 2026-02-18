@@ -35,7 +35,10 @@ const App: React.FC = () => {
       ) : (
         <Auth onLogin={handleLogin} />
       )}
-      <Toaster position="top-right" expand={true} richColors />
+      <Toaster position="top-right" expand={true} richColors toastOptions={{ role: 'status' }} />
+      {/* Accessible live region for screen reader announcements */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only" id="lymbus-live-region" />
+      <div aria-live="assertive" aria-atomic="true" className="sr-only" id="lymbus-alert-region" />
     </div>
   );
 };

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion as Motion, AnimatePresence } from 'motion/react';
 import { ConfirmationModal } from './ConfirmationModal';
 import { FacilityOverlay } from './FacilityOverlay';
+import { AddSourceModal } from './AddSourceModal';
+import { AddFacilityModal } from './AddFacilityModal';
 import { 
   BarChart3, 
   Users, 
@@ -27,7 +29,9 @@ import {
   Filter,
   XCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Upload,
+  Info
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -43,12 +47,8 @@ const BenchmarkInput = ({ label, value, unit, description }: any) => (
         <span className="text-[10px] font-bold text-brand-blue/60 uppercase">{unit}</span>
       )}
     </div>
-    <div className="bg-brand-bg/50 h-[40px] relative rounded-[12px] flex items-center px-4 border border-brand-border focus-within:border-brand-blue/30 focus-within:bg-white transition-all">
-      <input 
-        type="text" 
-        defaultValue={value}
-        className="bg-transparent w-full text-sm font-bold text-brand-dark focus:outline-none"
-      />
+    <div className="bg-brand-bg/50 h-[40px] relative rounded-[12px] flex items-center px-4 border border-brand-border/60 cursor-default">
+      <span className="text-sm font-bold text-brand-dark">{value}{unit ? ` ${unit}` : ''}</span>
     </div>
     <p className="text-[10px] text-brand-gray font-medium px-1 leading-tight opacity-0 group-hover:opacity-100 transition-opacity">
       {description}
@@ -56,85 +56,303 @@ const BenchmarkInput = ({ label, value, unit, description }: any) => (
   </div>
 );
 
-const BenchmarkingView = ({ onReset }: { onReset: () => void }) => (
-  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-    <div className="flex items-center justify-between">
-      <div className="space-y-1">
-        <h3 className="text-lg font-bold text-brand-dark">Benchmark Targets</h3>
-        <p className="text-brand-gray text-sm">Define your comparison baselines</p>
+const BENCHMARK_DATA = {
+  topBox: [
+    { label: 'NPS Target', value: '60', description: 'Loyalty comparison score' },
+    { label: 'PREM Score', value: '85', unit: '%', description: 'Experience measure target' },
+    { label: 'PROM Score', value: '80', unit: '%', description: 'Outcome measure target' },
+    { label: 'Response Rate', value: '45', unit: '%', description: 'Survey completion target' },
+    { label: 'Wait Time', value: '15', unit: 'min', description: 'Max acceptable delay' },
+    { label: 'Satisfaction', value: '90', unit: '%', description: 'Overall target rating' },
+    { label: 'Readmission', value: '5', unit: '%', description: 'Max readmit rate' },
+    { label: 'Staff Comms', value: '88', unit: '%', description: 'Communication target' },
+  ],
+  bottomBox: [
+    { label: 'NPS Target', value: '20', description: 'Detractor threshold score' },
+    { label: 'PREM Score', value: '30', unit: '%', description: 'Poor experience ceiling' },
+    { label: 'PROM Score', value: '25', unit: '%', description: 'Negative outcome ceiling' },
+    { label: 'Response Rate', value: '15', unit: '%', description: 'Low engagement floor' },
+    { label: 'Wait Time', value: '45', unit: 'min', description: 'Critical delay threshold' },
+    { label: 'Satisfaction', value: '40', unit: '%', description: 'Dissatisfaction ceiling' },
+    { label: 'Readmission', value: '15', unit: '%', description: 'High readmit ceiling' },
+    { label: 'Staff Comms', value: '35', unit: '%', description: 'Poor communication ceiling' },
+  ],
+};
+
+const InfoTooltip = ({ text }: { text: string }) => {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative inline-flex">
+      <span
+        role="button"
+        tabIndex={0}
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onFocus={() => setShow(true)}
+        onBlur={() => setShow(false)}
+        aria-label={text}
+        className="text-brand-gray/50 hover:text-brand-gray transition-colors focus-visible:ring-2 focus-visible:ring-brand-blue/40 rounded-full cursor-pointer"
+      >
+        <Info size={13} />
+      </span>
+      {show && (
+        <span
+          role="tooltip"
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-4 py-3 rounded-xl bg-brand-dark text-white text-[11px] font-medium leading-relaxed whitespace-normal w-56 text-left normal-case tracking-normal shadow-[0_10px_25px_-5px_rgba(0,0,0,0.25)] z-50 pointer-events-none border-0"
+        >
+          {text}
+          <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-[6px] border-transparent border-t-brand-dark" />
+        </span>
+      )}
+    </span>
+  );
+};
+
+const BenchmarkingView = ({ onReset }: { onReset: () => void }) => {
+  const [activeBoxTab, setActiveBoxTab] = useState<'topBox' | 'bottomBox'>('topBox');
+  const benchmarks = BENCHMARK_DATA[activeBoxTab];
+
+  const handleUploadCsv = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv,.xlsx,.xls';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        toast.success(`"${file.name}" uploaded successfully`, {
+          description: 'Benchmark data is being processed...',
+        });
+      }
+    };
+    input.click();
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold text-brand-dark">Benchmark Targets</h3>
+            <p className="text-brand-gray text-sm">Define your comparison baselines</p>
+          </div>
+          <button
+            onClick={handleUploadCsv}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-brand-border bg-card text-brand-dark font-bold text-[10px] uppercase tracking-widest hover:bg-brand-bg hover:border-brand-blue/30 transition-all active:scale-95 shadow-sm"
+          >
+            <Upload size={14} />
+            <span className="hidden sm:inline">Upload CSV</span>
+            <span className="sm:hidden">CSV</span>
+          </button>
+        </div>
+
+      </div>
+
+      <div className="bg-card rounded-[24px] border border-brand-border shadow-sm hidden">
+        {/* Highlights / Opportunities Underline Tabs */}
+        <div className="relative flex items-center border-b border-brand-border hidden">
+          {([
+            { key: 'topBox' as const, label: 'Highlights', tooltip: "Highlights show the percentage of respondents who selected the highest satisfaction rating (e.g. 'Very Satisfied' or 'Strongly Agree'). Higher is better." },
+            { key: 'bottomBox' as const, label: 'Opportunities', tooltip: "Opportunities show the percentage of respondents who selected the lowest satisfaction rating (e.g. 'Very Dissatisfied' or 'Strongly Disagree'). Lower is better." },
+          ]).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveBoxTab(tab.key)}
+              className={`relative flex items-center gap-1.5 px-6 md:px-8 py-4 text-[11px] font-bold uppercase tracking-widest transition-colors ${
+                activeBoxTab === tab.key
+                  ? 'text-brand-blue'
+                  : 'text-brand-gray hover:text-brand-dark'
+              }`}
+              aria-pressed={activeBoxTab === tab.key}
+            >
+              {tab.label}
+              <InfoTooltip text={tab.tooltip} />
+              {activeBoxTab === tab.key && (
+                <Motion.span
+                  layoutId="benchmarkTabIndicator"
+                  className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand-blue rounded-t-full"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+            </button>
+          ))}
+          <span className="ml-auto pr-6 md:pr-8 text-[11px] text-brand-gray whitespace-nowrap">
+            Last updated on 15 Jan, 2026
+          </span>
+        </div>
+
+        <div className="p-6 md:p-8">
+          <AnimatePresence mode="wait">
+            <Motion.div
+              key={activeBoxTab}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-6"
+            >
+              {benchmarks.map((b) => (
+                <BenchmarkInput
+                  key={b.label}
+                  label={b.label}
+                  value={b.value}
+                  unit={b.unit}
+                  description={b.description}
+                />
+              ))}
+            </Motion.div>
+          </AnimatePresence>
+
+          <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-8 mt-4 border-t border-brand-border/50">
+          <button 
+            onClick={onReset}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl border border-brand-border text-brand-gray font-bold text-[10px] uppercase tracking-widest hover:bg-brand-bg transition-all"
+          >
+            <RotateCcw size={14} />
+            Reset Defaults
+          </button>
+          <button 
+            onClick={() => toast.success('Benchmarks saved successfully')}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl bg-brand-dark text-white font-bold text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl active:scale-95"
+          >
+            <Save size={14} />
+            Save Changes
+          </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-card rounded-[24px] border border-brand-border shadow-sm">
+        {/* Highlights / Opportunities Underline Tabs (Duplicate) */}
+        <div className="relative flex items-center border-b border-brand-border">
+          {([
+            { key: 'topBox' as const, label: 'Highlights', tooltip: "Highlights show the percentage of respondents who selected the highest satisfaction rating (e.g. 'Very Satisfied' or 'Strongly Agree'). Higher is better." },
+            { key: 'bottomBox' as const, label: 'Opportunities', tooltip: "Opportunities show the percentage of respondents who selected the lowest satisfaction rating (e.g. 'Very Dissatisfied' or 'Strongly Disagree'). Lower is better." },
+          ]).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveBoxTab(tab.key)}
+              className={`relative flex items-center gap-1.5 px-6 md:px-8 py-4 text-[11px] font-bold uppercase tracking-widest transition-colors ${
+                activeBoxTab === tab.key
+                  ? 'text-brand-blue'
+                  : 'text-brand-gray hover:text-brand-dark'
+              }`}
+              aria-pressed={activeBoxTab === tab.key}
+            >
+              {tab.label}
+              <InfoTooltip text={tab.tooltip} />
+              {activeBoxTab === tab.key && (
+                <Motion.span
+                  layoutId="benchmarkTabIndicator2"
+                  className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand-blue rounded-t-full"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+            </button>
+          ))}
+          <span className="ml-auto pr-6 md:pr-8 text-[11px] text-brand-gray whitespace-nowrap">
+            Last updated on 15 Jan, 2026
+          </span>
+        </div>
+
+        <div className="p-6 md:p-8">
+          <AnimatePresence mode="wait">
+            <Motion.div
+              key={activeBoxTab}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-auto rounded-lg"
+              style={{ maxHeight: '420px' }}
+            >
+              {(() => {
+                const columns = [
+                  'Communication with Nurses',
+                  'Communication with Doctors',
+                  'Responsiveness of Hosp. Staff',
+                  'Comm. About Medicines',
+                  'Cleanliness of Hospital Env.',
+                  'Quietness of Hospital Env.',
+                  'Discharge Information',
+                  'Care Transition',
+                  'Hospital Rating',
+                  'Recommend the Hospital',
+                ];
+
+                const topBoxRows = [
+                  { percentile: '95th', note: 'near best', values: [92, 92, 88, 79, 90, 83, 94, 68, 90, 89] },
+                  { percentile: '90th', note: '', values: [89, 89, 83, 74, 87, 77, 92, 64, 86, 85] },
+                  { percentile: '75th', note: '', values: [84, 84, 75, 67, 81, 69, 90, 57, 79, 78] },
+                  { percentile: '50th', note: '', values: [80, 80, 65, 61, 74, 61, 87, 52, 72, 71] },
+                  { percentile: '25th', note: '', values: [76, 76, 58, 56, 68, 54, 84, 47, 66, 63] },
+                  { percentile: '10th', note: '', values: [72, 73, 53, 53, 63, 47, 81, 43, 60, 57] },
+                  { percentile: '5th', note: 'near worst', values: [70, 70, 50, 50, 59, 44, 79, 40, 56, 52] },
+                ];
+
+                const bottomBoxRows = [
+                  { percentile: '5th', note: 'near best', values: [0, 0, 0, 6, 0, 0, 6, 1, 0, 0] },
+                  { percentile: '10th', note: '', values: [1, 1, 2, 10, 2, 2, 8, 2, 2, 1] },
+                  { percentile: '25th', note: '', values: [2, 3, 5, 15, 5, 5, 10, 4, 5, 3] },
+                  { percentile: '50th', note: '', values: [4, 5, 9, 20, 8, 8, 13, 5, 7, 5] },
+                  { percentile: '75th', note: '', values: [5, 6, 13, 24, 11, 12, 16, 7, 10, 7] },
+                  { percentile: '90th', note: '', values: [7, 8, 17, 27, 15, 17, 19, 9, 14, 10] },
+                  { percentile: '95th', note: 'near worst', values: [9, 10, 19, 29, 17, 20, 21, 11, 16, 13] },
+                ];
+
+                const rows = activeBoxTab === 'topBox' ? topBoxRows : bottomBoxRows;
+
+                return (
+                  <table className="w-full min-w-[1400px] border-separate border-spacing-0 text-xs" role="table">
+                    <thead className="sticky top-0 z-20">
+                      <tr>
+                        <th className="text-left py-4 px-6 text-[10px] font-bold text-brand-gray uppercase tracking-widest border-b-2 border-[#EEEEEE] bg-white sticky left-0 z-30 min-w-[180px] shadow-[2px_0_8px_-2px_rgba(0,0,0,0.06)]">
+                          Hospital Percentile*
+                        </th>
+                        {columns.map((col) => (
+                          <th
+                            key={col}
+                            className="py-4 px-6 text-[10px] font-bold text-brand-gray uppercase tracking-wider border-b-2 border-[#EEEEEE] bg-brand-bg text-center min-w-[140px]"
+                          >
+                            <span className="inline-block leading-tight">{col}</span>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, rowIdx) => (
+                        <tr
+                          key={row.percentile + row.note}
+                          className={`transition-colors hover:bg-brand-blue/[0.04] ${
+                            rowIdx % 2 === 0 ? 'bg-white' : 'bg-brand-bg/30'
+                          }`}
+                        >
+                          <td className="py-3.5 px-6 font-bold text-brand-dark border-b border-[#EEEEEE] sticky left-0 z-10 bg-white whitespace-nowrap shadow-[2px_0_8px_-2px_rgba(0,0,0,0.06)]">
+                            <span>{row.percentile}</span>
+                            {row.note && (
+                              <span className="text-[9px] font-medium text-brand-gray ml-1.5">({row.note})</span>
+                            )}
+                          </td>
+                          {row.values.map((val, colIdx) => (
+                            <td
+                              key={colIdx}
+                              className="py-3.5 px-6 text-center font-bold text-brand-dark border-b border-[#EEEEEE] tabular-nums"
+                            >
+                              {val}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </Motion.div>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
-
-    <div className="bg-card p-6 md:p-8 rounded-[24px] border border-brand-border shadow-sm">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-6">
-        <BenchmarkInput 
-          label="NPS Target" 
-          value="60" 
-          description="Loyalty comparison score" 
-        />
-        <BenchmarkInput 
-          label="PREM Score" 
-          value="85" 
-          unit="%"
-          description="Experience measure target" 
-        />
-        <BenchmarkInput 
-          label="PROM Score" 
-          value="80" 
-          unit="%"
-          description="Outcome measure target" 
-        />
-        <BenchmarkInput 
-          label="Response Rate" 
-          value="45" 
-          unit="%"
-          description="Survey completion target" 
-        />
-        <BenchmarkInput 
-          label="Wait Time" 
-          value="15" 
-          unit="min"
-          description="Max acceptable delay" 
-        />
-        <BenchmarkInput 
-          label="Satisfaction" 
-          value="90" 
-          unit="%"
-          description="Overall target rating" 
-        />
-        <BenchmarkInput 
-          label="Readmission" 
-          value="5" 
-          unit="%"
-          description="Max readmit rate" 
-        />
-        <BenchmarkInput 
-          label="Staff Comms" 
-          value="88" 
-          unit="%"
-          description="Communication target" 
-        />
-      </div>
-
-      <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-8 mt-4 border-t border-brand-border/50">
-        <button 
-          onClick={onReset}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl border border-brand-border text-brand-gray font-bold text-[10px] uppercase tracking-widest hover:bg-brand-bg transition-all"
-        >
-          <RotateCcw size={14} />
-          Reset Defaults
-        </button>
-        <button 
-          onClick={() => toast.success('Benchmarks saved successfully')}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl bg-brand-dark text-white font-bold text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl active:scale-95"
-        >
-          <Save size={14} />
-          Save Changes
-        </button>
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 // --- User Roles Tab Components ---
 
@@ -379,7 +597,7 @@ const StatusBadge = ({ status }: { status: DataSourceEntry['status'] }) => {
   );
 };
 
-const DataSourcesView = () => {
+const DataSourcesView = ({ isAddModalOpen, setIsAddModalOpen }: { isAddModalOpen: boolean; setIsAddModalOpen: (v: boolean) => void }) => {
   const [selectedFacility, setSelectedFacility] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -606,6 +824,8 @@ const DataSourcesView = () => {
                               className={`w-11 h-6 rounded-full p-1 transition-all relative flex items-center ${
                                 isOn ? 'bg-brand-blue shadow-[0_0_10px_rgba(54,73,233,0.3)]' : 'bg-gray-200'
                               }`}
+                              role="switch"
+                              aria-checked={isOn}
                               aria-label={`Toggle ${entry.name} ${isOn ? 'off' : 'on'}`}
                             >
                               <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
@@ -633,6 +853,8 @@ const DataSourcesView = () => {
                               className={`w-11 h-6 rounded-full p-1 transition-all relative flex items-center shrink-0 ${
                                 isOn ? 'bg-brand-blue shadow-[0_0_10px_rgba(54,73,233,0.3)]' : 'bg-gray-200'
                               }`}
+                              role="switch"
+                              aria-checked={isOn}
                               aria-label={`Toggle ${entry.name} ${isOn ? 'off' : 'on'}`}
                             >
                               <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
@@ -700,6 +922,8 @@ const DataSourcesView = () => {
                     className={`w-11 h-6 rounded-full p-1 transition-all relative flex items-center ${
                       editingEntry?.status === 'active' ? 'bg-brand-blue shadow-[0_0_10px_rgba(54,73,233,0.3)]' : 'bg-gray-200'
                     }`}
+                    role="switch"
+                    aria-checked={editingEntry?.status === 'active'}
                     aria-label={`Toggle ${editingEntry?.name}`}
                   >
                     <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
@@ -866,6 +1090,21 @@ const DataSourcesView = () => {
         confirmLabel={isDeactivating ? 'Deactivate' : 'Activate'}
         variant={isDeactivating ? 'danger' : 'info'}
       />
+
+      <AddSourceModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAdd={(newSource: DataSourceEntry) => {
+          setEntries(prev => [newSource, ...prev]);
+        }}
+        facilities={[
+          { id: 'FAC-001', name: 'City General Hospital', location: 'Main Campus' },
+          { id: 'FAC-002', name: 'Sunrise Medical Center', location: 'East Wing' },
+          { id: 'FAC-003', name: "St. Jude Children's Research", location: 'Research Park' },
+          { id: 'FAC-004', name: 'Metropolitan Health', location: 'Downtown' },
+          { id: 'FAC-005', name: 'Westside Clinic', location: 'West Campus' },
+        ]}
+      />
     </div>
   );
 };
@@ -926,7 +1165,7 @@ const FacilityCard = ({ facility, onEdit, onDelete, onClick }: any) => (
   </div>
 );
 
-const FacilitiesView = () => {
+const FacilitiesView = ({ isAddModalOpen, setIsAddModalOpen }: { isAddModalOpen: boolean; setIsAddModalOpen: (v: boolean) => void }) => {
   const [facilities, setFacilities] = useState([
     { id: 'FAC-001', name: 'City General Hospital', location: 'Main Campus', type: 'Hospital', configuredSources: ['emr', 'sheets'] },
     { id: 'FAC-002', name: 'Sunrise Medical Center', location: 'East Wing', type: 'Clinic', configuredSources: ['emr'] },
@@ -1010,6 +1249,14 @@ const FacilitiesView = () => {
         confirmLabel="Delete Facility"
         variant="danger"
       />
+
+      <AddFacilityModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAdd={(newFacility: any) => {
+          setFacilities(prev => [newFacility, ...prev]);
+        }}
+      />
     </div>
   );
 };
@@ -1017,6 +1264,8 @@ const FacilitiesView = () => {
 export const Settings = () => {
   const [activeTab, setActiveTab] = useState('benchmarking'); // Back to benchmarking for user review
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isAddSourceModalOpen, setIsAddSourceModalOpen] = useState(false);
+  const [isAddFacilityModalOpen, setIsAddFacilityModalOpen] = useState(false);
 
   const tabs = [
     { id: 'benchmarking', label: 'Benchmarks', icon: BarChart3 },
@@ -1063,12 +1312,12 @@ export const Settings = () => {
           )}
           {activeTab === 'data' && (
             <Motion.div key="data" exit={{ opacity: 0, y: -10 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-              <DataSourcesView />
+              <DataSourcesView isAddModalOpen={isAddSourceModalOpen} setIsAddModalOpen={setIsAddSourceModalOpen} />
             </Motion.div>
           )}
           {activeTab === 'facility' && (
             <Motion.div key="facility" exit={{ opacity: 0, y: -10 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-              <FacilitiesView />
+              <FacilitiesView isAddModalOpen={isAddFacilityModalOpen} setIsAddModalOpen={setIsAddFacilityModalOpen} />
             </Motion.div>
           )}
         </AnimatePresence>
@@ -1076,7 +1325,7 @@ export const Settings = () => {
 
       {activeTab === 'data' && (
         <button 
-          onClick={() => toast.info('Feature coming soon: Add Data Source')}
+          onClick={() => setIsAddSourceModalOpen(true)}
           className="fixed bottom-8 right-8 z-40 w-14 h-14 rounded-full bg-brand-dark text-white hover:bg-black transition-all shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95"
           aria-label="Add Data Source"
         >
@@ -1086,7 +1335,7 @@ export const Settings = () => {
 
       {activeTab === 'facility' && (
         <button 
-          onClick={() => toast.info('Feature coming soon: Add Facility Modal')}
+          onClick={() => setIsAddFacilityModalOpen(true)}
           className="fixed bottom-8 right-8 z-40 w-14 h-14 rounded-full bg-brand-dark text-white hover:bg-black transition-all shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95"
           aria-label="Add Facility"
         >

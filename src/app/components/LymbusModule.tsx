@@ -1,476 +1,545 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion as Motion, AnimatePresence } from 'motion/react';
-import { 
-  Sparkles, 
-  Send, 
-  Bot, 
-  User, 
-  ChevronRight, 
-  Zap, 
-  MessageCircle, 
-  BarChart3, 
-  BrainCircuit,
-  Volume2,
-  Copy,
-  RotateCcw,
-  History,
+import {
+  Sparkles,
+  Send,
   Plus,
+  Copy,
+  Volume2,
   MoreVertical,
   ChevronLeft,
-  Layout
+  ChevronRight,
+  MessageSquare,
+  Clock,
+  BarChart3,
+  TrendingUp,
+  Zap,
+  Loader2,
+  Check,
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  LineChart, 
-  Line, 
-  Cell 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  Cell,
 } from 'recharts';
 
-interface Message {
-  id: string;
+/* ------------------------------------------------------------------ */
+/*  Types                                                             */
+/* ------------------------------------------------------------------ */
+interface ChartDataPoint {
+  day: string;
+  value: number;
+  highlight?: boolean;
+}
+
+interface ChatMessage {
+  id: number;
   type: 'bot' | 'user';
   text: string;
-  timestamp: Date;
-  chartData?: {
-    type: 'bar' | 'line';
-    data: any[];
-    dataKey: string;
-    labelKey: string;
-    color?: string;
-  };
+  chart?: ChartDataPoint[];
+  chartLabel?: string;
 }
 
 interface Session {
   id: string;
   title: string;
-  lastUpdate: Date;
-  messages: Message[];
+  date: string;
+  messages: ChatMessage[];
 }
 
+/* ------------------------------------------------------------------ */
+/*  Mock data & response logic                                        */
+/* ------------------------------------------------------------------ */
+const npsChartData: ChartDataPoint[] = [
+  { day: 'Mon', value: 65 },
+  { day: 'Tue', value: 72 },
+  { day: 'Wed', value: 88, highlight: true },
+  { day: 'Thu', value: 52 },
+  { day: 'Fri', value: 58 },
+];
+
+const waitTimesChartData: ChartDataPoint[] = [
+  { day: 'Mon', value: 42 },
+  { day: 'Tue', value: 38 },
+  { day: 'Wed', value: 55, highlight: true },
+  { day: 'Thu', value: 60 },
+  { day: 'Fri', value: 48 },
+];
+
+const predictionChartData: ChartDataPoint[] = [
+  { day: 'Mon', value: 70 },
+  { day: 'Tue', value: 75 },
+  { day: 'Wed', value: 82, highlight: true },
+  { day: 'Thu', value: 78 },
+  { day: 'Fri', value: 85 },
+];
+
+const initialMessages: ChatMessage[] = [
+  {
+    id: 1,
+    type: 'bot',
+    text: "Hello! I'm Lymbus AI. I've analyzed the Cardiology department's feedback as requested.",
+    chart: npsChartData,
+    chartLabel: 'DATA VISUALIZATION',
+  },
+];
+
+const mockSessions: Session[] = [
+  {
+    id: 'session-1',
+    title: 'Cardiology NPS Analysis',
+    date: '02/18/2026',
+    messages: initialMessages,
+  },
+  {
+    id: 'session-2',
+    title: 'ER Wait Time Report',
+    date: '02/15/2026',
+    messages: [
+      {
+        id: 100,
+        type: 'bot',
+        text: "I've compiled the Emergency Department wait time data for the past week. The average wait time peaked on Wednesday at 55 minutes.",
+        chart: waitTimesChartData,
+        chartLabel: 'WAIT TIMES (MIN)',
+      },
+    ],
+  },
+  {
+    id: 'session-3',
+    title: 'Monthly Satisfaction Trend',
+    date: '02/10/2026',
+    messages: [
+      {
+        id: 200,
+        type: 'bot',
+        text: "Here's the monthly satisfaction prediction model. Based on current trends, scores are expected to rise by 8% next month.",
+        chart: predictionChartData,
+        chartLabel: 'PREDICTED SCORES',
+      },
+    ],
+  },
+];
+
+const suggestionChips = [
+  { icon: TrendingUp, label: 'Trend for Cardiology NPS' },
+  { icon: BarChart3, label: 'Department wait times' },
+  { icon: Zap, label: "Predict next month's rate" },
+];
+
+function generateResponse(text: string): ChatMessage {
+  const lower = text.toLowerCase();
+  if (lower.includes('trend') || lower.includes('nps') || lower.includes('cardiology')) {
+    return {
+      id: Date.now() + 1,
+      type: 'bot',
+      text: "I've analyzed the Cardiology NPS trends. Wednesday shows the highest engagement with a score of 88, while Thursday dipped to 52. I recommend investigating staffing changes on that day.",
+      chart: npsChartData,
+      chartLabel: 'NPS TREND',
+    };
+  }
+  if (lower.includes('wait') || lower.includes('department')) {
+    return {
+      id: Date.now() + 1,
+      type: 'bot',
+      text: 'Department wait times show an increase mid-week. Thursday had the longest average wait at 60 minutes, primarily in the Emergency department between 4-8 PM.',
+      chart: waitTimesChartData,
+      chartLabel: 'WAIT TIMES (MIN)',
+    };
+  }
+  if (lower.includes('predict') || lower.includes('next month') || lower.includes('rate')) {
+    return {
+      id: Date.now() + 1,
+      type: 'bot',
+      text: "Based on current data patterns, I predict an overall 8% improvement in satisfaction scores next month. Friday is projected to be the strongest day at 85.",
+      chart: predictionChartData,
+      chartLabel: 'PREDICTED SCORES',
+    };
+  }
+  return {
+    id: Date.now() + 1,
+    type: 'bot',
+    text: `I've analyzed your query: "${text}". Based on the current hospital data, overall satisfaction is at 4.2/5 with a 64% response rate. The Cardiology department leads with a 4.6 average. Would you like me to drill deeper into a specific department or metric?`,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Chart component for messages                                      */
+/* ------------------------------------------------------------------ */
+function MessageChart({ data, label }: { data: ChartDataPoint[]; label: string }) {
+  return (
+    <div className="bg-card rounded-2xl p-4 mt-3 border border-brand-border/30">
+      <p className="text-[10px] tracking-[1px] text-brand-gray/50 mb-3 uppercase">
+        {label}
+      </p>
+      <div className="w-full h-[160px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} barCategoryGap="25%">
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="var(--brand-border)"
+              vertical={false}
+            />
+            <XAxis
+              dataKey="day"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 10, fill: '#666' }}
+            />
+            <YAxis hide />
+            <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+              {data.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={entry.highlight ? 'var(--brand-blue)' : 'var(--accent)'}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main Component                                                    */
+/* ------------------------------------------------------------------ */
 export const LymbusModule = () => {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-    const timer = setTimeout(() => {
-      window.dispatchEvent(new Event('resize'));
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const [sessions, setSessions] = useState<Session[]>([
-    {
-      id: '1',
-      title: 'Cardiology NPS Analysis',
-      lastUpdate: new Date(),
-      messages: [
-        { 
-          id: '1', 
-          type: 'bot', 
-          text: "Hello! I'm Lymbus AI. I've analyzed the Cardiology department's feedback as requested.", 
-          timestamp: new Date(),
-          chartData: {
-            type: 'bar',
-            dataKey: 'value',
-            labelKey: 'name',
-            data: [
-              { name: 'Mon', value: 78 },
-              { name: 'Tue', value: 82 },
-              { name: 'Wed', value: 65 },
-              { name: 'Thu', value: 45 },
-              { name: 'Fri', value: 52 },
-            ]
-          }
-        }
-      ]
-    }
-  ]);
-  const [activeSessionId, setActiveSessionId] = useState('1');
+  const [sessions, setSessions] = useState<Session[]>(mockSessions);
+  const [activeSessionId, setActiveSessionId] = useState<string>('session-1');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0];
+  const activeSession = sessions.find((s) => s.id === activeSessionId);
+  const messages = activeSession?.messages || [];
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [activeSession.messages, isTyping]);
+  }, [messages.length, scrollToBottom]);
 
-  const handleNewChat = () => {
-    const newId = Date.now().toString();
+  /* ---- Handlers ---- */
+  const handleSend = useCallback(
+    (text: string = inputValue) => {
+      const trimmed = text.trim();
+      if (!trimmed || isTyping) return;
+
+      const userMsg: ChatMessage = { id: Date.now(), type: 'user', text: trimmed };
+
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === activeSessionId
+            ? { ...s, messages: [...s.messages, userMsg] }
+            : s,
+        ),
+      );
+      setInputValue('');
+      setIsTyping(true);
+
+      setTimeout(() => {
+        const response = generateResponse(trimmed);
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === activeSessionId
+              ? { ...s, messages: [...s.messages, response] }
+              : s,
+          ),
+        );
+        setIsTyping(false);
+      }, 1200 + Math.random() * 800);
+    },
+    [inputValue, activeSessionId, isTyping],
+  );
+
+  const handleNewAnalysis = useCallback(() => {
     const newSession: Session = {
-      id: newId,
+      id: `session-${Date.now()}`,
       title: 'New Analysis',
-      lastUpdate: new Date(),
-      messages: [{
-        id: '1',
-        type: 'bot',
-        text: "How can I help you analyze your clinical data today?",
-        timestamp: new Date()
-      }]
+      date: '02/18/2026',
+      messages: [
+        {
+          id: Date.now(),
+          type: 'bot',
+          text: "Hello! I'm Lymbus AI. What would you like me to analyze today? I can help with NPS trends, wait times, complaint categories, and satisfaction predictions.",
+        },
+      ],
     };
-    setSessions([newSession, ...sessions]);
-    setActiveSessionId(newId);
+    setSessions((prev) => [newSession, ...prev]);
+    setActiveSessionId(newSession.id);
+  }, []);
+
+  const handleCopy = useCallback((text: string, id: number) => {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
-  const handleSend = (text: string = inputValue) => {
-    if (!text.trim()) return;
+  const handleSelectSession = useCallback((id: string) => {
+    setActiveSessionId(id);
+    setSidebarOpen(false);
+  }, []);
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      text,
-      timestamp: new Date()
-    };
-
-    const updatedSessions = sessions.map(s => {
-      if (s.id === activeSessionId) {
-        return {
-          ...s,
-          lastUpdate: new Date(),
-          title: s.messages.length === 1 ? text.substring(0, 30) + (text.length > 30 ? '...' : '') : s.title,
-          messages: [...s.messages, userMessage]
-        };
-      }
-      return s;
-    });
-
-    setSessions(updatedSessions);
-    setInputValue('');
-    setIsTyping(true);
-
-    // Mock AI Data Response Logic
-    setTimeout(() => {
-      let responseText = `I've processed the request for "${text}". `;
-      let chartData: Message['chartData'] | undefined;
-      
-      if (text.toLowerCase().includes('cardiology') || text.toLowerCase().includes('nps')) {
-        responseText += "The data reveals a sharp decline in NPS on Thursday morning. Here is the trend for this week:";
-        chartData = {
-          type: 'line',
-          dataKey: 'nps',
-          labelKey: 'day',
-          color: 'var(--chart-1)',
-          data: [
-            { day: 'Mon', nps: 82 },
-            { day: 'Tue', nps: 85 },
-            { day: 'Wed', nps: 81 },
-            { day: 'Thu', nps: 42 },
-            { day: 'Fri', nps: 58 },
-          ]
-        };
-      } else if (text.toLowerCase().includes('wait') || text.toLowerCase().includes('time')) {
-        responseText += "Comparing wait times across major departments reveals Oncology has the highest variance currently.";
-        chartData = {
-          type: 'bar',
-          dataKey: 'mins',
-          labelKey: 'dept',
-          color: 'var(--chart-2)',
-          data: [
-            { dept: 'ER', mins: 45 },
-            { dept: 'Cardio', mins: 22 },
-            { dept: 'Onco', mins: 85 },
-            { dept: 'Physio', mins: 12 },
-            { dept: 'Peds', mins: 34 },
-          ]
-        };
-      } else {
-        responseText += "Analysis complete. I recommend reviewing the East Wing's evening shift coverage based on the recent satisfaction metrics.";
-      }
-
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'bot',
-        text: responseText,
-        timestamp: new Date(),
-        chartData
-      };
-
-      setSessions(prev => prev.map(s => {
-        if (s.id === activeSessionId) {
-          return { ...s, messages: [...s.messages, botMessage] };
-        }
-        return s;
-      }));
-      setIsTyping(false);
-    }, 1500);
-  };
-
-  const suggestions = [
-    { text: "Trend for Cardiology NPS", icon: BrainCircuit },
-    { text: "Department wait times", icon: BarChart3 },
-    { text: "Predict next month's rate", icon: Zap }
-  ];
-
+  /* ---- Render ---- */
   return (
-    <div className="flex h-[calc(100vh-140px)] lg:h-[calc(100vh-80px)] w-full overflow-hidden">
-      {/* Session History Sidebar */}
-      <AnimatePresence initial={false}>
-        {showHistory && (
-          <Motion.div 
+    <div className="flex h-[calc(100vh-140px)] lg:h-[calc(100vh-80px)] w-full overflow-hidden bg-background">
+      {/* ====== History Sidebar ====== */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <Motion.div
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 280, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            className="bg-card border-r border-brand-border flex flex-col shrink-0"
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="shrink-0 bg-card border-r border-brand-border flex flex-col overflow-hidden"
           >
-            <div className="p-6 border-b border-brand-border">
-              <button 
-                onClick={handleNewChat}
-                className="w-full flex items-center justify-center gap-2 bg-brand-bg hover:bg-brand-blue/5 text-brand-blue border border-brand-blue/20 p-3 rounded-xl font-bold transition-all"
+            {/* New Analysis button */}
+            <div className="p-5 border-b border-brand-border">
+              <button
+                onClick={handleNewAnalysis}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-background border border-brand-blue/20 text-brand-blue hover:bg-brand-blue/5 transition-colors"
+                aria-label="Start new analysis"
               >
-                <Plus size={18} /> New Analysis
+                <Plus size={18} />
+                <span className="text-[15px]">New Analysis</span>
               </button>
             </div>
-            
-            <div className="flex-1 overflow-y-auto p-3 space-y-1">
-              <h3 className="px-3 text-[10px] font-bold text-brand-gray/50 uppercase tracking-widest mb-2 mt-2">Recent Sessions</h3>
-              {sessions.map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => setActiveSessionId(s.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group ${
-                    activeSessionId === s.id ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/20' : 'hover:bg-brand-bg text-brand-dark'
-                  }`}
-                >
-                  <MessageCircle size={18} className={activeSessionId === s.id ? 'text-white' : 'text-brand-blue'} />
-                  <div className="flex-1 truncate">
-                    <p className="text-xs font-bold truncate">{s.title}</p>
-                    <p className={`text-[10px] ${activeSessionId === s.id ? 'text-white/60' : 'text-brand-gray/60'}`}>
-                      {s.lastUpdate.toLocaleDateString()}
-                    </p>
-                  </div>
-                </button>
-              ))}
+
+            {/* Sessions list */}
+            <div className="flex-1 overflow-y-auto px-3 pt-4">
+              <p className="text-[10px] tracking-[1px] text-brand-gray/50 px-3 mb-2 uppercase">
+                Recent Sessions
+              </p>
+              <div className="flex flex-col gap-2">
+                {sessions.map((session) => (
+                  <button
+                    key={session.id}
+                    onClick={() => handleSelectSession(session.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-2xl text-left transition-all ${
+                      session.id === activeSessionId
+                        ? 'bg-brand-blue text-white shadow-md shadow-brand-blue/20'
+                        : 'hover:bg-background text-brand-dark'
+                    }`}
+                    aria-label={`Open session: ${session.title}`}
+                    aria-current={session.id === activeSessionId ? 'true' : undefined}
+                  >
+                    <MessageSquare
+                      size={18}
+                      className={session.id === activeSessionId ? 'text-white' : 'text-brand-gray'}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] truncate">
+                        {session.title}
+                      </p>
+                      <p
+                        className={`text-[10px] ${
+                          session.id === activeSessionId
+                            ? 'text-white/60'
+                            : 'text-brand-gray/60'
+                        }`}
+                      >
+                        {session.date}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           </Motion.div>
         )}
       </AnimatePresence>
 
-      {/* Main Chat Content */}
-      <div className="flex-1 flex flex-col min-w-0 bg-brand-bg/10 relative">
-        {/* Toggle History Sidebar */}
-        <button 
-          onClick={() => setShowHistory(!showHistory)}
-          className="absolute left-4 top-4 z-10 w-10 h-10 bg-card border border-brand-border rounded-xl flex items-center justify-center text-brand-gray hover:text-brand-blue transition-colors shadow-sm"
-        >
-          {showHistory ? <ChevronLeft size={20} /> : <History size={20} />}
-        </button>
+      {/* ====== Main Chat Area ====== */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 sm:px-8 py-4 border-b border-brand-border bg-card">
+          <div className="flex items-center gap-3">
+            {/* Toggle sidebar / back button */}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="w-8 h-8 rounded-full bg-background shadow-sm flex items-center justify-center text-brand-blue hover:bg-brand-blue/5 transition-colors"
+              aria-label={sidebarOpen ? 'Close history panel' : 'Open history panel'}
+            >
+              {sidebarOpen ? <ChevronLeft size={16} /> : <Clock size={16} />}
+            </button>
 
-        <div className="flex flex-col h-full max-w-4xl mx-auto w-full p-4 lg:p-6">
-          {/* Header Info */}
-          <div className="flex items-center justify-between mb-4 pl-12 lg:pl-14">
-            <div>
-              <h2 className="text-xl font-bold text-brand-dark flex items-center gap-2">
-                <Sparkles size={18} className="text-brand-blue" />
-                {activeSession.title}
-              </h2>
-            </div>
+            {/* Title */}
             <div className="flex items-center gap-2">
-              <div className="hidden sm:flex px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-bold border border-emerald-100 uppercase tracking-wider">
-                System Live
-              </div>
-              <button className="p-2 hover:bg-white rounded-lg text-brand-gray">
-                <MoreVertical size={18} />
-              </button>
+              <Sparkles size={18} className="text-brand-blue" />
+              <h2 className="text-brand-dark text-[18px] sm:text-[20px] tracking-tight">
+                {activeSession?.title || 'Lymbus AI'}
+              </h2>
             </div>
           </div>
 
-          {/* Chat Area */}
-          <div className="flex-1 bg-card rounded-[32px] border border-brand-border shadow-sm overflow-hidden flex flex-col mb-4">
-            <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8 scrollbar-thin scrollbar-thumb-brand-bg scrollbar-track-transparent">
-              {activeSession.messages.map((m) => (
-                <Motion.div 
+          <div className="flex items-center gap-2">
+            {/* System Live badge */}
+            <div className="hidden sm:flex items-center px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200">
+              <span className="text-[10px] tracking-[0.6px] text-emerald-600 uppercase">
+                System Live
+              </span>
+            </div>
+
+            {/* Menu */}
+            <button
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-brand-gray hover:bg-background transition-colors"
+              aria-label="More options"
+            >
+              <MoreVertical size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
+          <div className="max-w-3xl mx-auto space-y-6">
+            <AnimatePresence initial={false}>
+              {messages.map((m) => (
+                <Motion.div
                   key={m.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  transition={{ duration: 0.3 }}
                 >
-                  <div className={`flex gap-4 max-w-[90%] lg:max-w-[80%] ${m.type === 'user' ? 'flex-row-reverse' : ''}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 shadow-sm ${
-                      m.type === 'user' ? 'bg-brand-dark text-white' : 'bg-brand-bg text-brand-blue'
-                    }`}>
-                      {m.type === 'user' ? <User size={16} /> : <Bot size={16} />}
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div className={`p-4 lg:p-5 rounded-[24px] text-sm leading-relaxed ${
-                        m.type === 'user' 
-                          ? 'bg-brand-blue text-white rounded-tr-none shadow-md shadow-brand-blue/10' 
-                          : 'bg-brand-bg text-brand-dark rounded-tl-none border border-brand-border/50'
-                      }`}>
-                        {m.text}
+                  {m.type === 'bot' ? (
+                    /* Bot message */
+                    <div className="flex gap-3">
+                      {/* Avatar */}
+                      <div className="w-8 h-8 rounded-full bg-background shadow-sm flex items-center justify-center shrink-0 mt-1">
+                        <Sparkles size={14} className="text-brand-blue" />
+                      </div>
 
-                        {/* Chart Component Integration */}
-                        {m.chartData && (
-                          <div className="mt-4 bg-card rounded-2xl p-4 border border-brand-border/30 w-full relative min-h-[220px]">
-                            <p className="text-[10px] font-bold text-brand-gray/50 uppercase tracking-widest mb-4">Data Visualization</p>
-                            {isMounted && (
-                              <ResponsiveContainer 
-                                width="100%" 
-                                height={220}
-                                minWidth={0} 
-                                minHeight={100} 
-                                id={`chart-${m.id}`}
-                              >
-                                {m.chartData.type === 'bar' ? (
-                                <BarChart data={m.chartData.data}>
-                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                                  <XAxis 
-                                    dataKey={m.chartData.labelKey} 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{ fontSize: 10, fill: '#666' }} 
-                                  />
-                                  <YAxis hide />
-                                  <Tooltip 
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                    cursor={{ fill: '#f8faff' }}
-                                  />
-                                  <Bar dataKey={m.chartData.dataKey} radius={[4, 4, 0, 0]}>
-                                    {m.chartData.data.map((_, index) => (
-                                      <Cell key={`cell-${index}`} fill={index === 2 ? 'var(--chart-1)' : 'var(--accent)'} />
-                                    ))}
-                                  </Bar>
-                                </BarChart>
-                              ) : (
-                                <LineChart data={m.chartData.data}>
-                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                                  <XAxis 
-                                    dataKey={m.chartData.labelKey} 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{ fontSize: 10, fill: 'var(--brand-gray)' }} 
-                                  />
-                                  <YAxis hide />
-                                  <Tooltip 
-                                    contentStyle={{ 
-                                      borderRadius: '12px', 
-                                      border: 'none', 
-                                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                      backgroundColor: 'var(--card)',
-                                      color: 'var(--foreground)'
-                                    }}
-                                  />
-                                  <Line 
-                                    type="monotone" 
-                                    dataKey={m.chartData.dataKey} 
-                                    stroke={m.chartData.color || 'var(--chart-1)'} 
-                                    strokeWidth={3} 
-                                    dot={{ r: 4, fill: 'var(--card)', strokeWidth: 2, stroke: m.chartData.color || 'var(--chart-1)' }}
-                                    activeDot={{ r: 6, strokeWidth: 0 }}
-                                  />
-                                </LineChart>
-                              )}
-                            </ResponsiveContainer>
+                      <div className="flex-1 min-w-0">
+                        {/* Bubble */}
+                        <div className="bg-background border border-brand-border/50 rounded-bl-3xl rounded-br-3xl rounded-tr-3xl p-5">
+                          <p className="text-[14px] text-brand-dark leading-relaxed">
+                            {m.text}
+                          </p>
+                          {m.chart && m.chartLabel && (
+                            <MessageChart data={m.chart} label={m.chartLabel} />
                           )}
                         </div>
-                      )}
-                      </div>
-                      
-                      {m.type === 'bot' && (
-                        <div className="flex items-center gap-3 px-2">
-                          <button className="text-[10px] font-bold text-brand-gray/60 hover:text-brand-blue transition-colors flex items-center gap-1">
-                            <Copy size={10} /> Copy
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-3 mt-2 pl-2">
+                          <button
+                            onClick={() => handleCopy(m.text, m.id)}
+                            className="flex items-center gap-1.5 text-[10px] text-brand-gray/60 hover:text-brand-gray transition-colors"
+                            aria-label="Copy message"
+                          >
+                            {copiedId === m.id ? (
+                              <Check size={10} />
+                            ) : (
+                              <Copy size={10} />
+                            )}
+                            {copiedId === m.id ? 'Copied' : 'Copy'}
                           </button>
-                          <button className="text-[10px] font-bold text-brand-gray/60 hover:text-brand-blue transition-colors flex items-center gap-1">
-                            <Volume2 size={10} /> Listen
+                          <button
+                            className="flex items-center gap-1.5 text-[10px] text-brand-gray/60 hover:text-brand-gray transition-colors"
+                            aria-label="Listen to message"
+                          >
+                            <Volume2 size={10} />
+                            Listen
                           </button>
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    /* User message */
+                    <div className="flex justify-end">
+                      <div className="bg-brand-blue text-white rounded-bl-3xl rounded-tl-3xl rounded-tr-3xl px-5 py-3 max-w-[80%]">
+                        <p className="text-[14px] leading-relaxed">{m.text}</p>
+                      </div>
+                    </div>
+                  )}
                 </Motion.div>
               ))}
+            </AnimatePresence>
 
-              {isTyping && (
-                <Motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex justify-start items-center gap-4"
-                >
-                  <div className="w-8 h-8 rounded-full bg-brand-bg flex items-center justify-center shrink-0">
-                    <Bot size={16} className="text-brand-blue" />
-                  </div>
-                  <div className="bg-brand-bg/50 border border-brand-border/30 rounded-2xl rounded-tl-none p-4 flex gap-1.5 items-center">
-                    <Motion.div 
-                      animate={{ scale: [1, 1.2, 1] }} 
-                      transition={{ repeat: Infinity, duration: 1 }}
-                      className="w-1.5 h-1.5 bg-brand-blue/40 rounded-full" 
-                    />
-                    <Motion.div 
-                      animate={{ scale: [1, 1.2, 1] }} 
-                      transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
-                      className="w-1.5 h-1.5 bg-brand-blue/60 rounded-full" 
-                    />
-                    <Motion.div 
-                      animate={{ scale: [1, 1.2, 1] }} 
-                      transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
-                      className="w-1.5 h-1.5 bg-brand-blue/80 rounded-full" 
-                    />
-                  </div>
-                </Motion.div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input Controls */}
-            <div className="p-4 lg:p-6 bg-brand-bg/20 border-t border-brand-border">
-              {activeSession.messages.length < 3 && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {suggestions.map((s, i) => (
-                    <Motion.button 
-                      key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.5 + (i * 0.1) }}
-                      onClick={() => handleSend(s.text)}
-                      className="bg-card hover:bg-brand-blue hover:text-white text-brand-dark border border-brand-border px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 group"
-                    >
-                      <s.icon size={14} className="text-brand-blue group-hover:text-white transition-colors" />
-                      {s.text}
-                      <ChevronRight size={12} className="opacity-40" />
-                    </Motion.button>
-                  ))}
+            {/* Typing indicator */}
+            {isTyping && (
+              <Motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex gap-3"
+              >
+                <div className="w-8 h-8 rounded-full bg-background shadow-sm flex items-center justify-center shrink-0">
+                  <Sparkles size={14} className="text-brand-blue" />
                 </div>
-              )}
+                <div className="bg-background border border-brand-border/50 rounded-bl-3xl rounded-br-3xl rounded-tr-3xl px-5 py-3 flex items-center gap-2">
+                  <Loader2 size={14} className="animate-spin text-brand-blue" />
+                  <span className="text-xs text-brand-gray">Analyzing data...</span>
+                </div>
+              </Motion.div>
+            )}
 
-              <div className="relative group">
-                <div className="relative bg-card border border-brand-border rounded-[24px] shadow-sm flex items-center p-2 group-focus-within:border-brand-blue group-focus-within:ring-4 ring-brand-blue/5 transition-all">
-                  <div className="pl-4 pr-2 text-brand-blue">
-                    <Layout size={20} />
-                  </div>
-                  <input
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                    placeholder="Compare wait times or analyze NPS trends..."
-                    className="flex-1 bg-transparent py-3 text-sm font-medium focus:outline-none placeholder:text-brand-gray/40"
-                  />
-                  <button 
-                    onClick={() => handleSend()}
-                    disabled={!inputValue.trim() || isTyping}
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                      !inputValue.trim() || isTyping 
-                        ? 'bg-brand-bg text-brand-gray/40' 
-                        : 'bg-brand-blue text-white shadow-lg shadow-brand-blue/20 hover:scale-105 active:scale-95'
-                    }`}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        {/* Suggestion chips + Input */}
+        <div className="border-t border-brand-border bg-card px-4 sm:px-8 py-4">
+          <div className="max-w-3xl mx-auto">
+            {/* Suggestion chips */}
+            {!isTyping && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {suggestionChips.map((chip) => (
+                  <button
+                    key={chip.label}
+                    onClick={() => handleSend(chip.label)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-card border border-brand-border shadow-sm text-[12px] text-brand-dark hover:border-brand-blue/30 hover:shadow-md transition-all"
+                    aria-label={chip.label}
                   >
-                    <Send size={18} />
+                    <chip.icon size={14} className="text-brand-blue" />
+                    {chip.label}
+                    <ChevronRight size={10} className="text-brand-dark/40" />
                   </button>
-                </div>
+                ))}
               </div>
+            )}
+
+            {/* Input bar */}
+            <div className="relative flex items-center bg-background border border-brand-border rounded-2xl shadow-sm overflow-hidden">
+              <div className="pl-4 flex items-center">
+                <Sparkles size={16} className="text-brand-blue" />
+              </div>
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Compare wait times or analyze NPS trends..."
+                disabled={isTyping}
+                className="flex-1 bg-transparent py-3.5 px-3 text-[14px] text-brand-dark placeholder:text-brand-gray/50 focus:outline-none disabled:opacity-60"
+                aria-label="Message input for Lymbus AI"
+              />
+              <button
+                onClick={() => handleSend()}
+                disabled={!inputValue.trim() || isTyping}
+                className="mr-2 w-9 h-9 rounded-xl flex items-center justify-center text-brand-gray/40 hover:text-brand-blue disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                aria-label="Send message"
+              >
+                <Send size={18} />
+              </button>
             </div>
           </div>
         </div>

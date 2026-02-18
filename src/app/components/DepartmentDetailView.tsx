@@ -10,6 +10,7 @@ import {
   BarChart2,
   Calendar,
   ChevronRight,
+  ChevronDown,
   UserCheck,
   Star,
   Sparkles,
@@ -42,36 +43,144 @@ interface DepartmentDetailViewProps {
   onClose: () => void;
 }
 
-const weeklyData = [
-  { day: 'Mon', satisfaction: 85, volume: 120 },
-  { day: 'Tue', satisfaction: 88, volume: 145 },
-  { day: 'Wed', satisfaction: 72, volume: 130 },
-  { day: 'Thu', satisfaction: 45, volume: 110 },
-  { day: 'Fri', satisfaction: 60, volume: 160 },
-  { day: 'Sat', satisfaction: 92, volume: 90 },
-  { day: 'Sun', satisfaction: 95, volume: 75 },
-];
+type CareType = 'Overall' | 'Inpatient' | 'Outpatient';
 
-const staffPerformance = [
-  { 
-    name: 'Dr. Sarah Wilson', 
-    rating: 4.9, 
-    feedback: 42, 
-    avatar: "https://images.unsplash.com/photo-1759350075177-eeb89d507990?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMGRvY3RvciUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MDU3MjY2MHww&ixlib=rb-4.1.0&q=80&w=1080"
+const weeklyDataByCareType: Record<CareType, { day: string; satisfaction: number; volume: number }[]> = {
+  Overall: [
+    { day: 'Mon', satisfaction: 85, volume: 120 },
+    { day: 'Tue', satisfaction: 88, volume: 145 },
+    { day: 'Wed', satisfaction: 72, volume: 130 },
+    { day: 'Thu', satisfaction: 45, volume: 110 },
+    { day: 'Fri', satisfaction: 60, volume: 160 },
+    { day: 'Sat', satisfaction: 92, volume: 90 },
+    { day: 'Sun', satisfaction: 95, volume: 75 },
+  ],
+  Inpatient: [
+    { day: 'Mon', satisfaction: 78, volume: 65 },
+    { day: 'Tue', satisfaction: 82, volume: 72 },
+    { day: 'Wed', satisfaction: 68, volume: 70 },
+    { day: 'Thu', satisfaction: 40, volume: 58 },
+    { day: 'Fri', satisfaction: 55, volume: 80 },
+    { day: 'Sat', satisfaction: 88, volume: 45 },
+    { day: 'Sun', satisfaction: 90, volume: 38 },
+  ],
+  Outpatient: [
+    { day: 'Mon', satisfaction: 91, volume: 55 },
+    { day: 'Tue', satisfaction: 93, volume: 73 },
+    { day: 'Wed', satisfaction: 76, volume: 60 },
+    { day: 'Thu', satisfaction: 52, volume: 52 },
+    { day: 'Fri', satisfaction: 66, volume: 80 },
+    { day: 'Sat', satisfaction: 95, volume: 45 },
+    { day: 'Sun', satisfaction: 97, volume: 37 },
+  ],
+};
+
+const staffPerformanceByCareType: Record<CareType, { name: string; rating: number; feedback: number; avatar: string }[]> = {
+  Overall: [
+    { name: 'Dr. Sarah Wilson', rating: 4.9, feedback: 42, avatar: "https://images.unsplash.com/photo-1759350075177-eeb89d507990?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMGRvY3RvciUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MDU3MjY2MHww&ixlib=rb-4.1.0&q=80&w=1080" },
+    { name: 'Nurse Michael Chen', rating: 4.7, feedback: 38, avatar: "https://images.unsplash.com/photo-1612531385476-a86dc00daf9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBudXJzZSUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MDYzNTcwN3ww&ixlib=rb-4.1.0&q=80&w=1080" },
+    { name: 'Dr. James Miller', rating: 4.8, feedback: 25, avatar: "https://images.unsplash.com/photo-1615177393114-bd2917a4f74a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBkb2N0b3IlMjBwb3J0cmFpdHxlbnwxfHx8fDE3NzA2MzU3MDd8MA&ixlib=rb-4.1.0&q=80&w=1080" },
+  ],
+  Inpatient: [
+    { name: 'Dr. Sarah Wilson', rating: 4.8, feedback: 28, avatar: "https://images.unsplash.com/photo-1759350075177-eeb89d507990?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMGRvY3RvciUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MDU3MjY2MHww&ixlib=rb-4.1.0&q=80&w=1080" },
+    { name: 'Nurse Michael Chen', rating: 4.9, feedback: 31, avatar: "https://images.unsplash.com/photo-1612531385476-a86dc00daf9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBudXJzZSUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MDYzNTcwN3ww&ixlib=rb-4.1.0&q=80&w=1080" },
+    { name: 'Dr. James Miller', rating: 4.6, feedback: 19, avatar: "https://images.unsplash.com/photo-1615177393114-bd2917a4f74a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBkb2N0b3IlMjBwb3J0cmFpdHxlbnwxfHx8fDE3NzA2MzU3MDd8MA&ixlib=rb-4.1.0&q=80&w=1080" },
+  ],
+  Outpatient: [
+    { name: 'Dr. James Miller', rating: 4.9, feedback: 18, avatar: "https://images.unsplash.com/photo-1615177393114-bd2917a4f74a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBkb2N0b3IlMjBwb3J0cmFpdHxlbnwxfHx8fDE3NzA2MzU3MDd8MA&ixlib=rb-4.1.0&q=80&w=1080" },
+    { name: 'Dr. Sarah Wilson', rating: 4.8, feedback: 14, avatar: "https://images.unsplash.com/photo-1759350075177-eeb89d507990?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMGRvY3RvciUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MDU3MjY2MHww&ixlib=rb-4.1.0&q=80&w=1080" },
+    { name: 'Nurse Michael Chen', rating: 4.5, feedback: 7, avatar: "https://images.unsplash.com/photo-1612531385476-a86dc00daf9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBudXJzZSUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MDYzNTcwN3ww&ixlib=rb-4.1.0&q=80&w=1080" },
+  ],
+};
+
+interface KpiData {
+  rating: string;
+  ratingChange: string;
+  ratingPositive: boolean;
+  responseRate: string;
+  responseChange: string;
+  responsePositive: boolean;
+  negativeFeedback: string;
+  negativeChange: string;
+  negativePositive: boolean;
+  totalForms: string;
+  formsChange: string;
+  formsPositive: boolean;
+}
+
+const kpiDataByCareType: Record<CareType, KpiData> = {
+  Overall: {
+    rating: '', ratingChange: '5.2%', ratingPositive: true,
+    responseRate: '', responseChange: '3.8%', responsePositive: true,
+    negativeFeedback: '15%', negativeChange: '0.5%', negativePositive: false,
+    totalForms: '', formsChange: '2.3%', formsPositive: true,
   },
-  { 
-    name: 'Nurse Michael Chen', 
-    rating: 4.7, 
-    feedback: 38, 
-    avatar: "https://images.unsplash.com/photo-1612531385476-a86dc00daf9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBudXJzZSUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MDYzNTcwN3ww&ixlib=rb-4.1.0&q=80&w=1080"
+  Inpatient: {
+    rating: '4.3', ratingChange: '3.1%', ratingPositive: true,
+    responseRate: '72%', responseChange: '1.4%', responsePositive: true,
+    negativeFeedback: '19%', negativeChange: '2.1%', negativePositive: false,
+    totalForms: '286', formsChange: '1.8%', formsPositive: true,
   },
-  { 
-    name: 'Dr. James Miller', 
-    rating: 4.8, 
-    feedback: 25, 
-    avatar: "https://images.unsplash.com/photo-1615177393114-bd2917a4f74a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBkb2N0b3IlMjBwb3J0cmFpdHxlbnwxfHx8fDE3NzA2MzU3MDd8MA&ixlib=rb-4.1.0&q=80&w=1080"
+  Outpatient: {
+    rating: '4.7', ratingChange: '6.8%', ratingPositive: true,
+    responseRate: '81%', responseChange: '5.2%', responsePositive: true,
+    negativeFeedback: '9%', negativeChange: '1.3%', negativePositive: true,
+    totalForms: '192', formsChange: '4.1%', formsPositive: true,
   },
-];
+};
+
+interface SentimentItem {
+  label: string;
+  count: number;
+  percent: number;
+  color: string;
+  icon: any;
+}
+
+const sentimentByCareType: Record<CareType, { items: SentimentItem[]; severity: string; alert: string }> = {
+  Overall: {
+    items: [
+      { label: 'Wait Times & Intake', count: 24, percent: 65, color: 'bg-red-500', icon: Clock },
+      { label: 'Front Desk Comms', count: 12, percent: 35, color: 'bg-orange-500', icon: MessageSquare },
+      { label: 'Facility Cleanliness', count: 4, percent: 12, color: 'bg-brand-blue', icon: Sparkles },
+    ],
+    severity: 'Critical',
+    alert: 'Wait times have spiked by <strong>40%</strong> this week. AI suggests immediate resource reallocation to morning intake desks.',
+  },
+  Inpatient: {
+    items: [
+      { label: 'Nurse Response Time', count: 31, percent: 72, color: 'bg-red-500', icon: Clock },
+      { label: 'Discharge Process', count: 18, percent: 48, color: 'bg-orange-500', icon: MessageSquare },
+      { label: 'Room Comfort', count: 7, percent: 18, color: 'bg-brand-blue', icon: Sparkles },
+    ],
+    severity: 'Critical',
+    alert: 'Nurse call response time has exceeded <strong>8 minutes</strong> during night shifts. AI recommends adjusting staffing ratios for overnight coverage.',
+  },
+  Outpatient: {
+    items: [
+      { label: 'Scheduling Delays', count: 14, percent: 45, color: 'bg-orange-500', icon: Clock },
+      { label: 'Parking & Access', count: 9, percent: 28, color: 'bg-amber-500', icon: MessageSquare },
+      { label: 'Follow-up Comms', count: 5, percent: 15, color: 'bg-brand-blue', icon: Sparkles },
+    ],
+    severity: 'Moderate',
+    alert: 'Appointment scheduling delays average <strong>12 days</strong> for new referrals. Consider expanding online self-scheduling availability.',
+  },
+};
+
+const aiInsightByCareType: Record<CareType, { title: string; body: string }> = {
+  Overall: {
+    title: 'Staffing Efficiency Correlation',
+    body: 'Analysis indicates that satisfaction scores correlate strongly (0.84) with morning shift staffing levels. The drop on Thursday aligns with a 20% reduction in frontline staff availability.',
+  },
+  Inpatient: {
+    title: 'Length of Stay Impact',
+    body: 'Patients with stays exceeding 4 days report 23% lower satisfaction. Discharge planning bottlenecks on Thursdays correlate with a 0.78 coefficient to weekend readmissions.',
+  },
+  Outpatient: {
+    title: 'Appointment Flow Optimization',
+    body: 'Clinics with 15-min buffer slots between appointments score 31% higher in satisfaction. Current overbooking patterns on Tue/Fri drive the majority of negative feedback.',
+  },
+};
 
 const METRIC_DESCRIPTIONS: Record<string, string> = {
   "Overall Rating": "Measures patient satisfaction based on post-visit feedback on a scale of 0-5.",
@@ -133,6 +242,19 @@ const StatCard = ({ title, value, change, positive = true, icon: Icon, colorClas
 
 export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept, onClose }) => {
   const [isMounted, setIsMounted] = React.useState(false);
+  const [careType, setCareType] = React.useState<CareType>('Overall');
+  const [careDropdownOpen, setCareDropdownOpen] = React.useState(false);
+  const careDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (careDropdownRef.current && !careDropdownRef.current.contains(e.target as Node)) {
+        setCareDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   React.useEffect(() => {
     setIsMounted(true);
@@ -141,6 +263,12 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
     }, 100);
     return () => clearTimeout(timer);
   }, []);
+
+  const activeWeeklyData = weeklyDataByCareType[careType];
+  const activeStaff = staffPerformanceByCareType[careType];
+  const activeKpi = kpiDataByCareType[careType];
+  const activeSentiment = sentimentByCareType[careType];
+  const activeInsight = aiInsightByCareType[careType];
 
   return (
     <Motion.div 
@@ -165,6 +293,45 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <div className="relative" ref={careDropdownRef}>
+            <button
+              onClick={() => setCareDropdownOpen(!careDropdownOpen)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-brand-border bg-brand-bg hover:bg-brand-bg/80 transition-all text-sm font-bold text-brand-dark"
+              aria-haspopup="listbox"
+              aria-expanded={careDropdownOpen}
+            >
+              {careType}
+              <ChevronDown size={14} className={`text-brand-gray transition-transform ${careDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <AnimatePresence>
+              {careDropdownOpen && (
+                <Motion.ul
+                  initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                  transition={{ duration: 0.15 }}
+                  role="listbox"
+                  className="absolute right-0 top-full mt-1 w-40 bg-card border border-brand-border rounded-xl shadow-lg overflow-hidden z-50"
+                >
+                  {(['Overall', 'Inpatient', 'Outpatient'] as CareType[]).map((option) => (
+                    <li
+                      key={option}
+                      role="option"
+                      aria-selected={careType === option}
+                      onClick={() => { setCareType(option); setCareDropdownOpen(false); }}
+                      className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${
+                        careType === option
+                          ? 'bg-brand-blue/5 text-brand-blue font-bold'
+                          : 'text-brand-dark hover:bg-brand-bg font-medium'
+                      }`}
+                    >
+                      {option}
+                    </li>
+                  ))}
+                </Motion.ul>
+              )}
+            </AnimatePresence>
+          </div>
           <button onClick={onClose} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-[12px] text-brand-gray transition-colors border border-transparent hover:border-red-100">
             <X size={20} />
           </button>
@@ -176,8 +343,9 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
           <StatCard 
             title="Overall Rating" 
-            value={dept.rating} 
-            change="5.2%" 
+            value={activeKpi.rating || dept.rating} 
+            change={activeKpi.ratingChange} 
+            positive={activeKpi.ratingPositive}
             icon={Star} 
             colorClass="text-green-500" 
             delay={0.1} 
@@ -185,8 +353,9 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
           />
           <StatCard 
             title="Response Rate" 
-            value={dept.rate} 
-            change="3.8%" 
+            value={activeKpi.responseRate || dept.rate} 
+            change={activeKpi.responseChange} 
+            positive={activeKpi.responsePositive}
             icon={TrendingUp} 
             colorClass="text-green-500" 
             delay={0.15} 
@@ -194,9 +363,9 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
           />
           <StatCard 
             title="Negative Feedback" 
-            value="15%" 
-            change="0.5%" 
-            positive={false} 
+            value={activeKpi.negativeFeedback} 
+            change={activeKpi.negativeChange} 
+            positive={activeKpi.negativePositive} 
             icon={AlertCircle} 
             colorClass="text-red-500" 
             delay={0.2} 
@@ -204,8 +373,9 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
           />
           <StatCard 
             title="Total Forms" 
-            value={dept.responses} 
-            change="2.3%" 
+            value={activeKpi.totalForms || dept.responses} 
+            change={activeKpi.formsChange} 
+            positive={activeKpi.formsPositive}
             icon={MessageSquare} 
             colorClass="text-green-500" 
             delay={0.25} 
@@ -238,7 +408,7 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
             <div className="flex-1 w-full min-h-[300px]">
               {isMounted && (
                 <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={100}>
-                  <AreaChart data={weeklyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <AreaChart data={activeWeeklyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorSat" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--brand-blue)" stopOpacity={0.15}/>
@@ -300,9 +470,9 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
                     <p className="text-[10px] text-white/60 font-bold uppercase tracking-widest">Smart Corelation</p>
                   </div>
                 </div>
-                <h3 className="text-2xl font-bold mb-4 leading-tight">Staffing Efficiency Correlation</h3>
+                <h3 className="text-2xl font-bold mb-4 leading-tight">{activeInsight.title}</h3>
                 <p className="text-sm text-white/80 leading-relaxed mb-8 font-medium">
-                  Analysis indicates that satisfaction scores for <span className="text-white font-bold underline decoration-white/30">{dept.name}</span> correlate strongly (0.84) with morning shift staffing levels. The drop on Thursday aligns with a 20% reduction in frontline staff availability.
+                  {activeInsight.body}
                 </p>
               </div>
               
@@ -335,7 +505,7 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
             </div>
             
             <div className="space-y-3">
-              {staffPerformance.map((staff, i) => (
+              {activeStaff.map((staff, i) => (
                 <div key={i} className="flex items-center justify-between p-4 rounded-[16px] bg-brand-bg/40 border border-brand-border/50 hover:bg-brand-bg transition-all group">
                   <div className="flex items-center gap-4">
                     <div className="relative">
@@ -379,16 +549,12 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
               </div>
               <div className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-0.5 rounded-full text-[10px] font-bold">
                 <ArrowUpRight size={10} />
-                Critical
+                {activeSentiment.severity}
               </div>
             </div>
 
             <div className="space-y-6 flex-1">
-              {[
-                { label: 'Wait Times & Intake', count: 24, percent: 65, color: 'bg-red-500', icon: Clock },
-                { label: 'Front Desk Comms', count: 12, percent: 35, color: 'bg-orange-500', icon: MessageSquare },
-                { label: 'Facility Cleanliness', count: 4, percent: 12, color: 'bg-brand-blue', icon: Sparkles },
-              ].map((theme, i) => (
+              {activeSentiment.items.map((theme, i) => (
                 <div key={i} className="space-y-3">
                   <div className="flex justify-between items-end">
                     <div className="flex items-center gap-2">
@@ -418,9 +584,10 @@ export const DepartmentDetailView: React.FC<DepartmentDetailViewProps> = ({ dept
               </div>
               <div className="relative z-10">
                 <p className="text-[10px] font-bold text-red-700 mb-1 uppercase tracking-[0.2em]">Urgent Action Required</p>
-                <p className="text-[11px] text-red-600 font-bold leading-relaxed">
-                  Wait times have spiked by <span className="font-bold underline">40%</span> in {dept.name} this week. AI suggests immediate resource reallocation to morning intake desks.
-                </p>
+                <p 
+                  className="text-[11px] text-red-600 font-bold leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: activeSentiment.alert }}
+                />
               </div>
             </div>
           </div>

@@ -21,6 +21,7 @@ import {
 import { SplitFocusCard } from "@/app/components/SplitFocusCard";
 import { Leaderboard } from "@/app/components/Leaderboard";
 import { DepartmentDetailView } from "@/app/components/DepartmentDetailView";
+import { MetricDetailOverlay } from "@/app/components/MetricDetailOverlay";
 import { 
   LineChart, 
   Line, 
@@ -73,7 +74,7 @@ const StatCard = ({ title, value, change, positive = true, icon: Icon, colorClas
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
       onClick={onClick}
-      className={`bg-card p-6 rounded-[24px] border transition-all cursor-pointer relative ${
+      className={`bg-card p-6 rounded-[24px] border transition-all cursor-pointer relative min-w-[260px] snap-start sm:min-w-0 ${
         isActive ? 'border-brand-border' : 'border-transparent opacity-50 grayscale'
       } hover:shadow-lg hover:border-brand-blue/20 ${rainbowClasses[index % 4]}`}
     >
@@ -121,6 +122,7 @@ export const Dashboard = ({ search = '', onSelectDept, onSelectLoc }: { search?:
   const [deptSort, setDeptSort] = React.useState({ key: 'name', order: 'asc' });
   const [locSort, setLocSort] = React.useState({ key: 'name', order: 'asc' });
   const [activeMetrics, setActiveMetrics] = React.useState<string[]>(['nps', 'prem', 'prom']);
+  const [selectedMetric, setSelectedMetric] = React.useState<any>(null);
 
   const [isMounted, setIsMounted] = React.useState(false);
 
@@ -266,7 +268,7 @@ export const Dashboard = ({ search = '', onSelectDept, onSelectLoc }: { search?:
       </Motion.section>
 
       {/* KPI Cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      <section className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:pb-0 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4 lg:gap-6 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <StatCard 
           title="Net Promoter Score" 
           value="58" 
@@ -275,7 +277,7 @@ export const Dashboard = ({ search = '', onSelectDept, onSelectLoc }: { search?:
           colorClass="text-green-500" 
           delay={0.1} 
           isActive={activeMetrics.includes('nps')}
-          onClick={() => toggleMetric('nps')}
+          onClick={() => setSelectedMetric({ title: 'Net Promoter Score', value: '58', change: '5.2%', positive: true, icon: Sparkles, colorClass: 'text-green-500' })}
           index={0}
         />
         <StatCard 
@@ -286,7 +288,7 @@ export const Dashboard = ({ search = '', onSelectDept, onSelectLoc }: { search?:
           colorClass="text-green-500" 
           delay={0.15} 
           isActive={activeMetrics.includes('prem')}
-          onClick={() => toggleMetric('prem')}
+          onClick={() => setSelectedMetric({ title: 'PREM Score', value: '92', change: '3.8%', positive: true, icon: FileText, colorClass: 'text-green-500' })}
           index={1}
         />
         <StatCard 
@@ -298,7 +300,7 @@ export const Dashboard = ({ search = '', onSelectDept, onSelectLoc }: { search?:
           colorClass="text-red-500" 
           delay={0.2} 
           isActive={activeMetrics.includes('prom')}
-          onClick={() => toggleMetric('prom')}
+          onClick={() => setSelectedMetric({ title: 'PROM Score', value: '7.5%', change: '1.3%', positive: false, icon: BarChart3, colorClass: 'text-red-500' })}
           index={2}
         />
         <StatCard 
@@ -308,6 +310,7 @@ export const Dashboard = ({ search = '', onSelectDept, onSelectLoc }: { search?:
           icon={MessageCircle} 
           colorClass="text-green-500" 
           delay={0.25} 
+          onClick={() => setSelectedMetric({ title: 'Response Rate', value: '42%', change: '2.3%', positive: true, icon: MessageCircle, colorClass: 'text-green-500' })}
           index={3}
         />
       </section>
@@ -339,8 +342,9 @@ export const Dashboard = ({ search = '', onSelectDept, onSelectLoc }: { search?:
               ))}
             </div>
           </div>
-          <div className="w-full relative min-h-[300px]">
+          <div className="w-full relative min-h-[300px] overflow-x-auto">
             {isMounted && (
+              <div className="min-w-[600px] sm:min-w-0">
               <ResponsiveContainer 
                 width="100%" 
                 height={300}
@@ -407,10 +411,11 @@ export const Dashboard = ({ search = '', onSelectDept, onSelectLoc }: { search?:
                   />
                 )}
               </LineChart>
-            </ResponsiveContainer>
-          )}
+              </ResponsiveContainer>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
         {/* Alerts Panel */}
         <div className="hidden lg:col-span-4 bg-card p-4 sm:p-6 rounded-[24px] border border-brand-border">
@@ -732,6 +737,13 @@ export const Dashboard = ({ search = '', onSelectDept, onSelectLoc }: { search?:
         </div>
         <ChevronRight size={20} className="text-white/60" />
       </section>
+
+      {/* Metric Detail Overlay */}
+      <MetricDetailOverlay
+        isOpen={!!selectedMetric}
+        onClose={() => setSelectedMetric(null)}
+        metric={selectedMetric}
+      />
     </Motion.div>
   );
 };
